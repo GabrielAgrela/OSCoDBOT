@@ -33,8 +33,8 @@ def _stick_left_loop(window) -> None:
     Margins are specified as a percentage of the game client size
     to keep placement consistent across resolutions and DPI.
     """
-    margin_left_pct = 0.004   # ~0.4% of width (approx 5px at 1280w)
-    margin_top_pct = 0.375     # ~56% of height (~400px at 720h)
+    margin_left_pct = DEFAULT_CONFIG.ui_margin_left_pct
+    margin_top_pct = DEFAULT_CONFIG.ui_margin_top_pct
     title_substr = DEFAULT_CONFIG.window_title_substr
     while True:
         try:
