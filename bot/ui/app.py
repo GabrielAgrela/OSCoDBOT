@@ -11,7 +11,7 @@ from bot.states import (
     build_scouts_state,
     build_farm_wood_state,
     build_farm_ore_state,
-    build_farm_ore_and_scout_state,
+    build_alternating_state,
 )
 
 
@@ -28,9 +28,6 @@ class App:
 
         self.btn_ore = tk.Button(root, text="Start Farm Ore", width=20, command=self.on_toggle_farm_ore)
         self.btn_ore.pack(padx=12, pady=(0, 12))
-
-        self.btn_combo = tk.Button(root, text="Start Farm Ore and Scout", width=22, command=self.on_toggle_combo)
-        self.btn_combo.pack(padx=12, pady=(0, 12))
 
         self.status = tk.StringVar(value="Idle")
         self.lbl = tk.Label(root, textvariable=self.status)
@@ -51,6 +48,7 @@ class App:
         self._combo_machine: StateMachine | None = None
         self._combo_ctx: Context | None = None
         self._combo_running = False
+        self._combo_modes: tuple[str, str] | None = None  # order: (first, second)
 
         self._build_machines()
 
@@ -68,9 +66,7 @@ class App:
         self._ore_machine = StateMachine(ore_state)
         self._ore_ctx = ore_ctx
 
-        combo_state, combo_ctx = build_farm_ore_and_scout_state(cfg)
-        self._combo_machine = StateMachine(combo_state)
-        self._combo_ctx = combo_ctx
+        # combo built on demand when user starts a second mode
 
     def on_toggle_scouts(self) -> None:
         if not self._machine or not self._ctx:
@@ -82,43 +78,60 @@ class App:
             self.btn.config(text="Start Scouts")
             self.status.set("Stopped")
         else:
-            # Stop other modes if running
-            if self._farm_running and self._farm_machine and self._farm_ctx:
-                self._farm_machine.stop(self._farm_ctx)
-                self._farm_running = False
-                self.btn_farm.config(text="Start Farm Wood")
+            # If Ore is running, upgrade to combo (Ore -> Scouts)
             if self._ore_running and self._ore_machine and self._ore_ctx:
                 self._ore_machine.stop(self._ore_ctx)
                 self._ore_running = False
                 self.btn_ore.config(text="Start Farm Ore")
-            if self._combo_running and self._combo_machine and self._combo_ctx:
-                self._combo_machine.stop(self._combo_ctx)
-                self._combo_running = False
-                self.btn_combo.config(text="Start Farm Ore and Scout")
-
-            self._machine.start(self._ctx)
-            self._running = True
-            self.btn.config(text="Stop Scouts")
-            self.status.set("Scouts running...")
+                self._start_combo(("farm_ore", build_farm_ore_state), ("scouts", build_scouts_state))
+                return
+            # If Farm Wood is running, upgrade to combo (Wood -> Scouts)
+            if self._farm_running and self._farm_machine and self._farm_ctx:
+                self._farm_machine.stop(self._farm_ctx)
+                self._farm_running = False
+                self.btn_farm.config(text="Start Farm Wood")
+                # Start combo: farm_wood then scouts
+                self._start_combo(("farm_wood", build_farm_wood_state), ("scouts", build_scouts_state))
+                return
+            # If a different combo is running, stop it and start single scouts
+            if self._combo_running:
+                self._stop_combo()
+                self._start_single_scouts()
+                return
+            # Otherwise start single scouts
+            self._start_single_scouts()
 
 
     def on_toggle_farm(self) -> None:
         if not self._farm_machine or not self._farm_ctx:
             messagebox.showerror("Error", "Farm machine not initialized")
             return
-        # Stop other modes if running
+        # If Scouts is running, upgrade to combo (Scouts -> Farm Wood)
         if self._running and self._machine and self._ctx:
             self._machine.stop(self._ctx)
             self._running = False
             self.btn.config(text="Start Scouts")
+            self._start_combo(("scouts", build_scouts_state), ("farm_wood", build_farm_wood_state))
+            return
+        # If Ore is running, upgrade to combo (Ore -> Farm Wood)
         if self._ore_running and self._ore_machine and self._ore_ctx:
             self._ore_machine.stop(self._ore_ctx)
             self._ore_running = False
             self.btn_ore.config(text="Start Farm Ore")
-        if self._combo_running and self._combo_machine and self._combo_ctx:
-            self._combo_machine.stop(self._combo_ctx)
-            self._combo_running = False
-            self.btn_combo.config(text="Start Farm Ore and Scout")
+            self._start_combo(("farm_ore", build_farm_ore_state), ("farm_wood", build_farm_wood_state))
+            return
+        # If a combo is running
+        if self._combo_running:
+            if self._combo_modes and "farm_wood" in self._combo_modes:
+                self._stop_combo()
+            else:
+                self._stop_combo()
+                self._farm_machine.start(self._farm_ctx)
+                self._farm_running = True
+                self.btn_farm.config(text="Stop Farm Wood")
+                self.status.set("Farm wood running...")
+            return
+        # Toggle single Farm Wood
         if self._farm_running:
             self._farm_machine.stop(self._farm_ctx)
             self._farm_running = False
@@ -130,60 +143,86 @@ class App:
             self.btn_farm.config(text="Stop Farm Wood")
             self.status.set("Farm wood running...")
 
-    def on_toggle_combo(self) -> None:
-        if not self._combo_machine or not self._combo_ctx:
-            messagebox.showerror("Error", "Combo machine not initialized")
-            return
-        # Stop other modes if running
-        if self._running and self._machine and self._ctx:
-            self._machine.stop(self._ctx)
-            self._running = False
-            self.btn.config(text="Start Scouts")
-        if self._farm_running and self._farm_machine and self._farm_ctx:
-            self._farm_machine.stop(self._farm_ctx)
-            self._farm_running = False
-            self.btn_farm.config(text="Start Farm Wood")
-        if self._ore_running and self._ore_machine and self._ore_ctx:
-            self._ore_machine.stop(self._ore_ctx)
-            self._ore_running = False
-            self.btn_ore.config(text="Start Farm Ore")
-        if self._combo_running:
+    def _stop_combo(self) -> None:
+        if self._combo_running and self._combo_machine and self._combo_ctx:
             self._combo_machine.stop(self._combo_ctx)
-            self._combo_running = False
-            self.btn_combo.config(text="Start Farm Ore and Scout")
-            self.status.set("Stopped")
-        else:
-            self._combo_machine.start(self._combo_ctx)
-            self._combo_running = True
-            self.btn_combo.config(text="Stop Farm Ore and Scout")
-            self.status.set("Farm ore and scouts running...")
+        self._combo_running = False
+        self._combo_modes = None
+        # Reset button texts
+        self.btn.config(text="Start Scouts")
+        self.btn_farm.config(text="Start Farm Wood")
+        self.btn_ore.config(text="Start Farm Ore")
+        self.status.set("Stopped")
+
+    def _start_single_scouts(self) -> None:
+        self._machine.start(self._ctx)
+        self._running = True
+        self.btn.config(text="Stop Scouts")
+        self.status.set("Scouts running...")
+
+    def _start_single_ore(self) -> None:
+        self._ore_machine.start(self._ore_ctx)
+        self._ore_running = True
+        self.btn_ore.config(text="Stop Farm Ore")
+        self.status.set("Farm ore running...")
+
+    def _start_combo(self, first: tuple[str, callable], second: tuple[str, callable]) -> None:
+        # Build and start a fresh alternating state machine using the two builders
+        cfg = DEFAULT_CONFIG
+        combo_state, combo_ctx = build_alternating_state(cfg, first[1], second[1])
+        self._combo_machine = StateMachine(combo_state)
+        self._combo_ctx = combo_ctx
+        self._combo_machine.start(self._combo_ctx)
+        self._combo_running = True
+        self._combo_modes = (first[0], second[0])
+        # Update button labels for the two modes involved
+        if "scouts" in self._combo_modes:
+            self.btn.config(text="Stop Scouts")
+        if "farm_wood" in self._combo_modes:
+            self.btn_farm.config(text="Stop Farm Wood")
+        if "farm_ore" in self._combo_modes:
+            self.btn_ore.config(text="Stop Farm Ore")
+        self.status.set(f"Alternating: {self._combo_modes[0]} -> {self._combo_modes[1]}")
 
     def on_toggle_farm_ore(self) -> None:
         if not self._ore_machine or not self._ore_ctx:
             messagebox.showerror("Error", "Farm ore machine not initialized")
             return
-        # Stop other modes if running
+        # If Scouts is running, upgrade to combo (Scouts -> Ore)
         if self._running and self._machine and self._ctx:
             self._machine.stop(self._ctx)
             self._running = False
             self.btn.config(text="Start Scouts")
+            self._start_combo(("scouts", build_scouts_state), ("farm_ore", build_farm_ore_state))
+            return
+        # If Farm Wood is running, upgrade to combo (Wood -> Ore)
         if self._farm_running and self._farm_machine and self._farm_ctx:
             self._farm_machine.stop(self._farm_ctx)
             self._farm_running = False
             self.btn_farm.config(text="Start Farm Wood")
+            self._start_combo(("farm_wood", build_farm_wood_state), ("farm_ore", build_farm_ore_state))
+            return
+        # If a combo is running
+        if self._combo_running:
+            if self._combo_modes and "farm_ore" in self._combo_modes:
+                self._stop_combo()
+            else:
+                self._stop_combo()
+                self._start_single_ore()
+            return
+        # Toggle single Ore
         if self._ore_running:
             self._ore_machine.stop(self._ore_ctx)
             self._ore_running = False
             self.btn_ore.config(text="Start Farm Ore")
             self.status.set("Stopped")
         else:
-            self._ore_machine.start(self._ore_ctx)
-            self._ore_running = True
-            self.btn_ore.config(text="Stop Farm Ore")
-            self.status.set("Farm ore running...")
+            self._start_single_ore()
 
 def run_app() -> None:
     root = tk.Tk()
     app = App(root)
     root.mainloop()
+
+
 
