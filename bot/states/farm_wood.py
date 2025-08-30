@@ -136,7 +136,7 @@ def build_farm_wood_state(cfg: AppConfig) -> tuple[State, Context]:
         GraphStep(
             name="EndNoLegions",
             actions=[
-                ClickPercent(name="tap_center_end", x_pct=0.5, y_pct=0.65),
+                ClickPercent(name="tap_center_end", x_pct=0.5, y_pct=0.70),
                 Wait(name="wait_after_end_click", seconds=1.0),
                 EndCycle(name="end_cycle"),
             ],

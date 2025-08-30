@@ -28,7 +28,7 @@ def run_app() -> None:
     time.sleep(0.5)
     url = "http://127.0.0.1:5000"
     if HAS_WEBVIEW:
-        webview.create_window("Call of the Dragons Bot", url, width=420, height=560, resizable=False)
+        webview.create_window("Call of the Dragons Bot", url, width=560, height=720, resizable=False)
         webview.start()
     else:
         print("pywebview not installed. Opening in your default browser instead.\nInstall with: pip install pywebview")

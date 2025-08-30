@@ -8,22 +8,36 @@
   </head>
   <body>
     <div class="container">
-      <h1>Call of the Dragons Bot</h1>
-      <p class="hint">Select one or two modes, then press Start Machines.</p>
-      <div id="modes" class="modes">
-        {% for m in modes %}
-          <label class="mode">
-            <input type="checkbox" class="mode-check" value="{{m.key}}"> {{ m.label }}
-          </label>
-        {% endfor %}
-      </div>
-      <div class="controls">
-        <button id="start" class="primary">Start Machines</button>
-        <button id="stop">Stop</button>
-      </div>
-      <div id="status" class="status">Idle</div>
+      <header class="hero">
+        <h1>Call of the Dragons Bot</h1>
+        <p>Pick any machines (one or more), then Start.</p>
+      </header>
+
+      <section>
+        <h2 class="section-title">Machines</h2>
+        <div id="modes" class="modes">
+          {% for m in modes %}
+            <label class="mode" title="{{ m.label }}">
+              <input type="checkbox" class="mode-check" value="{{m.key}}" />
+              <span class="chip">{{ m.label }}</span>
+            </label>
+          {% endfor %}
+        </div>
+      </section>
+
+      <section class="panel">
+        <div class="controls">
+          <button id="start" class="btn primary" disabled>
+            <span class="spinner" aria-hidden="true"></span>
+            <span>Start Machines</span>
+          </button>
+          <button id="stop" class="btn">Stop</button>
+        </div>
+        <div id="status" class="status">Idle</div>
+      </section>
+
+      <footer class="footer">UI powered by HTML • Runs in a native window</footer>
     </div>
     <script src="/static/app.js"></script>
   </body>
   </html>
-

@@ -7,7 +7,7 @@ from flask import Flask, jsonify, render_template, request
 
 from bot.config import DEFAULT_CONFIG, AppConfig
 from bot.core.state_machine import Context, State, StateMachine
-from bot.states import MODES as STATE_MODES, build_alternating_state
+from bot.states import MODES as STATE_MODES, build_alternating_state, build_round_robin_state
 
 
 @dataclass
@@ -70,15 +70,13 @@ def api_start():
         mach.start(ctx)
         _running = Running(kind="single", modes=(key,), machine=mach, ctx=ctx)
         return jsonify({"ok": True, "kind": "single", "modes": selection})
-    # Limit to two for now
-    first, second = selection[:2]
-    (_, b1) = STATE_MODES[first]
-    (_, b2) = STATE_MODES[second]
-    state, ctx = build_alternating_state(cfg, b1, b2)
+    # 2+ selections: run round-robin in selection order
+    builders = [STATE_MODES[k][1] for k in selection]
+    state, ctx = build_round_robin_state(cfg, builders)
     mach = StateMachine(state)
     mach.start(ctx)
-    _running = Running(kind="combo", modes=(first, second), machine=mach, ctx=ctx)
-    return jsonify({"ok": True, "kind": "combo", "modes": [first, second]})
+    _running = Running(kind="multi", modes=tuple(selection), machine=mach, ctx=ctx)
+    return jsonify({"ok": True, "kind": "multi", "modes": selection})
 
 
 @app.post("/api/stop")
@@ -89,4 +87,3 @@ def api_stop():
 
 def run_web(host: str = "127.0.0.1", port: int = 5000, debug: bool = False) -> None:
     app.run(host=host, port=port, debug=debug)
-

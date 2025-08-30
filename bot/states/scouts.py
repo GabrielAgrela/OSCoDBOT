@@ -12,6 +12,7 @@ def build_scouts_state(cfg: AppConfig) -> tuple[State, Context]:
     )
     actions = [
         Screenshot(name="capture_1"),
+        Wait(name="wait_1", seconds=2.0),
         FindAndClick(
             name="ScoutIdle",
             templates=["ScoutIdle.png"],

@@ -119,7 +119,7 @@ def build_farm_gold_state(cfg: AppConfig) -> tuple[State, Context]:
                     region_pct=(0.0, 0.0, 1.0, 1.0),
                     threshold=0.95,
                 ),
-                Wait(name="wait_after_gather_retry", seconds=5.0),
+                Wait(name="wait_after_gather_retry", seconds=2.0),
             ],
             on_success="CreateLegionsButton",
             on_failure="GatherButton",
@@ -134,7 +134,7 @@ def build_farm_gold_state(cfg: AppConfig) -> tuple[State, Context]:
                     region_pct=(0.0, 0.0, 1.0, 1.0),
                     threshold=cfg.match_threshold,
                 ),
-                Wait(name="wait_after_legions", seconds=1.0),
+                Wait(name="wait_after_legions", seconds=2.0),
             ],
             on_success="March",
             on_failure="EndNoLegions",
@@ -142,7 +142,7 @@ def build_farm_gold_state(cfg: AppConfig) -> tuple[State, Context]:
         GraphStep(
             name="EndNoLegions",
             actions=[
-                ClickPercent(name="tap_center_end", x_pct=0.5, y_pct=0.65),
+                ClickPercent(name="tap_center_end", x_pct=0.5, y_pct=0.70),
                 Wait(name="wait_after_end_click", seconds=1.0),
                 EndCycle(name="end_cycle"),
             ],
