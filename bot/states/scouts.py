@@ -31,7 +31,7 @@ def build_scouts_state(cfg: AppConfig) -> tuple[State, Context]:
         GraphStep(
             name="ScoutSelectExplore",
             actions=[
-                Wait(name="wait_after_idle", seconds=0.8),
+                Wait(name="wait_after_idle", seconds=2),
                 Screenshot(name="scout_cap_2"),
                 FindAndClick(
                     name="ScoutSelectExplore",
