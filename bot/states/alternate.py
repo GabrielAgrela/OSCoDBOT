@@ -24,6 +24,10 @@ class AlternatingState(State):
                     return
                 prev = getattr(st, "_current", None)
                 st.run_once(ctx)
+                # Allow actions to request early end of the current cycle
+                if getattr(ctx, "end_cycle", False):
+                    ctx.end_cycle = False
+                    break
                 curr = getattr(st, "_current", None)
                 if curr != start:
                     progressed = True
@@ -33,6 +37,8 @@ class AlternatingState(State):
             return
         # For non-graph states (e.g., SequenceState), one run_once is one cycle
         st.run_once(ctx)
+        if getattr(ctx, "end_cycle", False):
+            ctx.end_cycle = False
 
     def run_once(self, ctx: Context) -> None:
         if self._mode == 0:
@@ -55,4 +61,3 @@ def build_alternating_state(cfg: AppConfig, first_builder: Builder, second_build
         templates_dir=cfg.templates_dir,
     )
     return AlternatingState(first_state, second_state), ctx
-

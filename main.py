@@ -1,4 +1,4 @@
-from bot.ui.app import run_app
+from bot.web.run import run_app
 from bot.core.window import enable_dpi_awareness
 
 

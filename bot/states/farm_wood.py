@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from bot.config import AppConfig
 from bot.core.state_machine import Context, GraphState, GraphStep, State
-from bot.actions import Screenshot, FindAndClick, Wait, ClickPercent
+from bot.actions import Screenshot, FindAndClick, Wait, ClickPercent, EndCycle
 
 
 def build_farm_wood_state(cfg: AppConfig) -> tuple[State, Context]:
@@ -22,7 +22,7 @@ def build_farm_wood_state(cfg: AppConfig) -> tuple[State, Context]:
                     region_pct=(0.0, 0.0, 1.0, 1.0),
                     threshold=cfg.match_threshold,
                 ),
-                Wait(name="wait_after_magnifier", seconds=3.0),
+                Wait(name="wait_after_magnifier", seconds=1.0),
             ],
             on_success="LoggingCampAny",
             on_failure="ClickMapIcon",
@@ -37,7 +37,7 @@ def build_farm_wood_state(cfg: AppConfig) -> tuple[State, Context]:
                     region_pct=(0.0, 0.0, 1.0, 1.0),
                     threshold=cfg.match_threshold,
                 ),
-                Wait(name="wait_after_map", seconds=3.0),
+                Wait(name="wait_after_map", seconds=1.0),
             ],
             on_success="MagnifierAfterMap",
             on_failure="MagnifierAfterMap",
@@ -52,7 +52,7 @@ def build_farm_wood_state(cfg: AppConfig) -> tuple[State, Context]:
                     region_pct=(0.0, 0.0, 1.0, 1.0),
                     threshold=cfg.match_threshold,
                 ),
-                Wait(name="wait_after_magnifier2", seconds=3.0),
+                Wait(name="wait_after_magnifier2", seconds=1.0),
             ],
             on_success="LoggingCampAny",
             on_failure="OpenMagnifier",
@@ -67,7 +67,7 @@ def build_farm_wood_state(cfg: AppConfig) -> tuple[State, Context]:
                     region_pct=(0.0, 0.0, 1.0, 1.0),
                     threshold=cfg.match_threshold,
                 ),
-                Wait(name="wait_after_log", seconds=3.0),
+                Wait(name="wait_after_log", seconds=1.0),
             ],
             on_success="SearchFarmButton",
             on_failure="LoggingCampAny",
@@ -82,7 +82,7 @@ def build_farm_wood_state(cfg: AppConfig) -> tuple[State, Context]:
                     region_pct=(0.0, 0.0, 1.0, 1.0),
                     threshold=cfg.match_threshold,
                 ),
-                Wait(name="wait_after_search", seconds=3.0),
+                Wait(name="wait_after_search", seconds=1.0),
             ],
             on_success="GatherButton",
             on_failure="SearchFarmButton",
@@ -97,7 +97,7 @@ def build_farm_wood_state(cfg: AppConfig) -> tuple[State, Context]:
                     region_pct=(0.0, 0.0, 1.0, 1.0),
                     threshold=0.95,
                 ),
-                Wait(name="wait_after_gather", seconds=3.0),
+                Wait(name="wait_after_gather", seconds=1.0),
             ],
             on_success="CreateLegionsButton",
             on_failure="TapCenterThenGather",
@@ -113,7 +113,7 @@ def build_farm_wood_state(cfg: AppConfig) -> tuple[State, Context]:
                     region_pct=(0.0, 0.0, 1.0, 1.0),
                     threshold=0.95,
                 ),
-                Wait(name="wait_after_gather_retry", seconds=3.0),
+                Wait(name="wait_after_gather_retry", seconds=1.0),
             ],
             on_success="CreateLegionsButton",
             on_failure="GatherButton",
@@ -128,10 +128,20 @@ def build_farm_wood_state(cfg: AppConfig) -> tuple[State, Context]:
                     region_pct=(0.0, 0.0, 1.0, 1.0),
                     threshold=cfg.match_threshold,
                 ),
-                Wait(name="wait_after_legions", seconds=3.0),
+                Wait(name="wait_after_legions", seconds=1.0),
             ],
             on_success="March",
-            on_failure="CreateLegionsButton",
+            on_failure="EndNoLegions",
+        ),
+        GraphStep(
+            name="EndNoLegions",
+            actions=[
+                ClickPercent(name="tap_center_end", x_pct=0.5, y_pct=0.65),
+                Wait(name="wait_after_end_click", seconds=1.0),
+                EndCycle(name="end_cycle"),
+            ],
+            on_failure="OpenMagnifier",
+            on_success="OpenMagnifier",
         ),
         GraphStep(
             name="March",
@@ -143,7 +153,7 @@ def build_farm_wood_state(cfg: AppConfig) -> tuple[State, Context]:
                     region_pct=(0.0, 0.0, 1.0, 1.0),
                     threshold=cfg.match_threshold,
                 ),
-                Wait(name="wait_after_march", seconds=3.0),
+                Wait(name="wait_after_march", seconds=1.0),
             ],
             on_success="OpenMagnifier",
             on_failure="March",
@@ -151,4 +161,3 @@ def build_farm_wood_state(cfg: AppConfig) -> tuple[State, Context]:
     ]
     state = GraphState(steps=steps, start="OpenMagnifier", loop_sleep_s=0.05)
     return state, ctx
-

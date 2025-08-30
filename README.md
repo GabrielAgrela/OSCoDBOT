@@ -21,6 +21,7 @@ Project Structure
   - `scouts.py` (`build_scouts_state`)
   - `farm_wood.py` (`build_farm_wood_state`)
   - `farm_ore.py` (`build_farm_ore_state`)
+  - `farm_gold.py` (`build_farm_gold_state`)
 - `assets/templates/`: Place your PNG templates here.
 
 Prerequisites
@@ -55,6 +56,9 @@ Usage
      `SearchFarmButton.png`, `GatherButton.png`, `CreateLegionsButton.png`, `March.png`.
    - Farm Ore: `Magnifier.png`, `MapIcon.png`, one of the ore resource icons such as
      `OreMine.png` or `Quarry.png` (optionally their `*Enabled.png` variants), plus
+     `SearchFarmButton.png`, `GatherButton.png`, `CreateLegionsButton.png`, `March.png`.
+   - Farm Gold: `Magnifier.png`, `MapIcon.png`, one of the gold resource icons such as
+     `GoldMine.png` or `GoldDeposit.png` (optionally their `*Enabled.png` variants), plus
      `SearchFarmButton.png`, `GatherButton.png`, `CreateLegionsButton.png`, `March.png`.
 2) Run the UI:
    python main.py

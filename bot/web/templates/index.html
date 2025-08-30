@@ -1,0 +1,29 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Call of the Dragons Bot</title>
+    <link rel="stylesheet" href="/static/style.css" />
+  </head>
+  <body>
+    <div class="container">
+      <h1>Call of the Dragons Bot</h1>
+      <p class="hint">Select one or two modes, then press Start Machines.</p>
+      <div id="modes" class="modes">
+        {% for m in modes %}
+          <label class="mode">
+            <input type="checkbox" class="mode-check" value="{{m.key}}"> {{ m.label }}
+          </label>
+        {% endfor %}
+      </div>
+      <div class="controls">
+        <button id="start" class="primary">Start Machines</button>
+        <button id="stop">Stop</button>
+      </div>
+      <div id="status" class="status">Idle</div>
+    </div>
+    <script src="/static/app.js"></script>
+  </body>
+  </html>
+
