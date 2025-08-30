@@ -22,7 +22,7 @@ def build_scouts_state(cfg: AppConfig) -> tuple[State, Context]:
                     name="ScoutIdle",
                     templates=["ScoutIdle.png"],
                     region_pct=cfg.side_region_pct,
-                    threshold=cfg.match_threshold,
+                    threshold=0.95,
                 ),
             ],
             on_success="ScoutSelectExplore",
@@ -46,7 +46,7 @@ def build_scouts_state(cfg: AppConfig) -> tuple[State, Context]:
         GraphStep(
             name="ScoutExplore",
             actions=[
-                Wait(name="wait_after_select", seconds=0.8),
+                Wait(name="wait_after_select", seconds=2),
                 Screenshot(name="scout_cap_3"),
                 FindAndClick(
                     name="ScoutExplore",
