@@ -11,7 +11,7 @@ class AppConfig:
 
     # Capture and matching
     screenshot_period_s: float = 0.7
-    match_threshold: float = 0.85
+    match_threshold: float = 0.9
 
     # Default side region where the first image is searched (x, y, w, h in 0..1)
     side_region_pct: tuple[float, float, float, float] = (0.6, 0.0, 0.4, 1.0)  # right 40%
