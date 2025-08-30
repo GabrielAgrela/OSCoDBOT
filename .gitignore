@@ -81,3 +81,7 @@ bot/actions/__pycache__/*
 bot/core/__pycache__/*
 bot/states/__pycache__/*
 bot/web/__pycache__/*
+bot/__pycache__/*
+
+debug_captures/
+

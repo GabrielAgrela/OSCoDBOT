@@ -13,6 +13,7 @@ class Wait(Action):
 
     def run(self, ctx: Context) -> None:
         end_by = time.time() + self.seconds
+        print(f"[Wait] wait {self.seconds} seconds")
         while time.time() < end_by:
             if ctx.stop_event.is_set():
                 break

@@ -20,6 +20,9 @@ class AppConfig:
     assets_dir: Path = Path("assets")
     templates_dir: Path = Path("assets/templates")
 
+    # Debugging
+    save_shots: bool = False
+    shots_dir: Path = Path("debug_captures")
+
 
 DEFAULT_CONFIG = AppConfig()
-

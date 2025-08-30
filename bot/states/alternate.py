@@ -87,6 +87,8 @@ def build_alternating_state(cfg: AppConfig, first_builder: Builder, second_build
     ctx = Context(
         window_title_substr=cfg.window_title_substr,
         templates_dir=cfg.templates_dir,
+        save_shots=cfg.save_shots,
+        shots_dir=cfg.shots_dir,
     )
     return AlternatingState(first_state, second_state), ctx
 
@@ -101,5 +103,7 @@ def build_round_robin_state(cfg: AppConfig, builders: Sequence[Builder]) -> tupl
     ctx = Context(
         window_title_substr=cfg.window_title_substr,
         templates_dir=cfg.templates_dir,
+        save_shots=cfg.save_shots,
+        shots_dir=cfg.shots_dir,
     )
     return RoundRobinState(states), ctx

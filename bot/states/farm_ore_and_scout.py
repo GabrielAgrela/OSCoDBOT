@@ -41,8 +41,9 @@ def build_farm_ore_and_scout_state(cfg: AppConfig) -> tuple[State, Context]:
     ctx = Context(
         window_title_substr=cfg.window_title_substr,
         templates_dir=cfg.templates_dir,
+        save_shots=cfg.save_shots,
+        shots_dir=cfg.shots_dir,
     )
 
     combined = AlternatingState(scouts=scouts_state, ore=ore_state)  # type: ignore[arg-type]
     return combined, ctx
-

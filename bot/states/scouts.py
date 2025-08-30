@@ -9,6 +9,8 @@ def build_scouts_state(cfg: AppConfig) -> tuple[State, Context]:
     ctx = Context(
         window_title_substr=cfg.window_title_substr,
         templates_dir=cfg.templates_dir,
+        save_shots=cfg.save_shots,
+        shots_dir=cfg.shots_dir,
     )
     actions = [
         Screenshot(name="capture_1"),
@@ -17,7 +19,7 @@ def build_scouts_state(cfg: AppConfig) -> tuple[State, Context]:
             name="ScoutIdle",
             templates=["ScoutIdle.png"],
             region_pct=cfg.side_region_pct,
-            threshold=cfg.match_threshold,
+            threshold=0.95,
         ),
         Wait(name="wait_1", seconds=1.0),
         Screenshot(name="capture_2"),
@@ -39,4 +41,3 @@ def build_scouts_state(cfg: AppConfig) -> tuple[State, Context]:
     ]
     state = SequenceState(name="scout_loop", actions=actions, loop_sleep_s=0.05)
     return state, ctx
-

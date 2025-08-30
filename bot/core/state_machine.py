@@ -35,6 +35,9 @@ class Context:
 
     # Control
     stop_event: threading.Event = field(default_factory=threading.Event)
+    # Debugging
+    save_shots: bool = False
+    shots_dir: Path = Path("debug_captures")
     # Signal to enclosing orchestrator (e.g., AlternatingState) to end the current cycle early
     end_cycle: bool = False
 

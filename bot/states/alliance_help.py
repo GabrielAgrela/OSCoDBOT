@@ -9,6 +9,8 @@ def build_alliance_help_state(cfg: AppConfig) -> tuple[State, Context]:
     ctx = Context(
         window_title_substr=cfg.window_title_substr,
         templates_dir=cfg.templates_dir,
+        save_shots=cfg.save_shots,
+        shots_dir=cfg.shots_dir,
     )
 
     steps = [
@@ -38,4 +40,3 @@ def build_alliance_help_state(cfg: AppConfig) -> tuple[State, Context]:
     ]
     state = GraphState(steps=steps, start="ClickHelp", loop_sleep_s=0.05)
     return state, ctx
-

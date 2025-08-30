@@ -48,6 +48,7 @@ class FindAndClick(Action):
             if tpl is None:
                 continue
             found, top_left_xy, score = match_template(ctx.frame_bgr, tpl, self.threshold, roi_xywh)
+            print(f"[FindAndClick] click tpl={fname} score={score:.3f} found={found}")
             if not found:
                 continue
 
@@ -56,10 +57,6 @@ class FindAndClick(Action):
             cy = top_left_xy[1] + tpl_h // 2
             screen_x = left + cx
             screen_y = top + cy
-            try:
-                print(f"[FindAndClick] click tpl={fname} score={score:.3f}")
-            except Exception:
-                pass
 
             ctx.last_match = MatchResult(
                 score=score,
