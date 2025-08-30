@@ -71,9 +71,21 @@ def bring_to_front(hwnd: int) -> None:
 
 
 def click_screen_xy(x: int, y: int) -> None:
-    win32api.SetCursorPos((x, y))
-    win32api.mouse_event(win32con.MOUSEEVENTF_LEFTDOWN, 0, 0, 0, 0)
-    win32api.mouse_event(win32con.MOUSEEVENTF_LEFTUP, 0, 0, 0, 0)
+    # Remember current cursor position, click at (x, y), then return immediately
+    try:
+        prev_pos = win32api.GetCursorPos()
+    except Exception:
+        prev_pos = None
+    try:
+        win32api.SetCursorPos((x, y))
+        win32api.mouse_event(win32con.MOUSEEVENTF_LEFTDOWN, 0, 0, 0, 0)
+        win32api.mouse_event(win32con.MOUSEEVENTF_LEFTUP, 0, 0, 0, 0)
+    finally:
+        if prev_pos is not None:
+            try:
+                win32api.SetCursorPos(prev_pos)
+            except Exception:
+                pass
 
 
 def enable_dpi_awareness() -> None:
