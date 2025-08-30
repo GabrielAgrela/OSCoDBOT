@@ -94,7 +94,7 @@ def build_farm_ore_state(cfg: AppConfig) -> tuple[State, Context]:
                     region_pct=(0.0, 0.0, 1.0, 1.0),
                     threshold=cfg.match_threshold,
                 ),
-                Wait(name="wait_after_search", seconds=1.0),
+                Wait(name="wait_after_search", seconds=2.0),
             ],
             on_success="GatherButton",
             on_failure="SearchFarmButton",
