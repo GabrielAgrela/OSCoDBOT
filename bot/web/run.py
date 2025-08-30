@@ -28,17 +28,21 @@ def _serve():
 
 
 def _stick_left_loop(window) -> None:
-    """Continuously pin the UI window to the left side of the game window."""
-    margin_left = 5
-    margin_top = 400
+    """Continuously pin the UI window to the left side of the game window.
+
+    Margins are specified as a percentage of the game client size
+    to keep placement consistent across resolutions and DPI.
+    """
+    margin_left_pct = 0.004   # ~0.4% of width (approx 5px at 1280w)
+    margin_top_pct = 0.375     # ~56% of height (~400px at 720h)
     title_substr = DEFAULT_CONFIG.window_title_substr
     while True:
         try:
             hwnd = find_window_by_title_substr(title_substr)
             if hwnd:
                 rect = get_client_rect_screen(hwnd)
-                x = rect.left + margin_left
-                y = rect.top + margin_top
+                x = rect.left + int(rect.width * margin_left_pct)
+                y = rect.top + int(rect.height * margin_top_pct)
                 try:
                     # Move the webview window to stick to the left inside the game window
                     window.move(x, y)
@@ -94,7 +98,7 @@ def run_app() -> None:
                 "Call of the Dragons Bot",
                 url,
                 width=200,
-                height=365,
+                height=300,
                 resizable=False,
                 on_top=True,
                 frameless=True,
