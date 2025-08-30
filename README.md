@@ -27,28 +27,48 @@ Prerequisites
 - Python 3.10+ recommended.
 - Google Play Games window running the game. Default title substring: `Call of Dragons`.
 
-Install
-1) Create and activate a virtual environment.
-2) Install dependencies:
+Windows Install (Step-by-step)
+1) Install Python 3.10+ from python.org (check "Add Python to PATH").
+2) Open Command Prompt (CMD) in this project folder.
+3) Create a virtual environment:
+   py -m venv .venv
+4) Activate it:
+   .\\.venv\\Scripts\\activate.bat
+5) Upgrade tooling (recommended):
+   python -m pip install --upgrade pip setuptools wheel
+6) Install dependencies:
    pip install -r requirements.txt
+7) Run the app:
+   python main.py
+
+Optional
+- If you see a pywin32 post-install message or click issues, run:
+  python -m pywin32_postinstall -install
+- If OpenCV fails to import due to missing VCRUNTIME DLLs, install the
+  "Microsoft Visual C++ Redistributable for Visual Studio 2015-2022 (x64)" from Microsoft.
 
 Usage
-1) Place your template images in `assets/templates/`.
-   - Expected default names: `first.png`, `second.png`, `third.png`.
+1) Place template images in `assets/templates/`.
+   - Scouts: `ScoutIdle.png`, `ScoutSelectExplore.png`, `ScoutExplore.png`.
+   - Farm Wood: `Magnifier.png`, `MapIcon.png`, `LoggingCamp.png`, `LoggingCampEnabled.png`,
+     `SearchFarmButton.png`, `GatherButton.png`, `CreateLegionsButton.png`, `March.png`.
 2) Run the UI:
    python main.py
-3) Click "Start Scouts" to begin the loop. Click again to stop.
+3) Buttons:
+   - "Start Scouts" runs the scouts loop.
+   - "Start Farm Wood" runs the wood-farm flow. Starting one stops the other.
 
 Behavior
-- Scouts: Screenshot → find/click templates in sequence with waits.
-- Farm Wood: Branching flow (GraphState) with retries and a center tap fallback on Gather.
+- Scouts: Screenshot then find/click templates in sequence with waits.
+- Farm Wood: Branching flow (GraphState) with retries and a center-tap fallback before re-trying Gather.
+
 
 Configuration
 - Defaults are set in `bot/config.py`:
   - `WINDOW_TITLE_SUBSTR = "Call of Dragons"`
   - `MATCH_THRESHOLD = 0.85`
   - `SIDE_REGION_PCT = (0.6, 0.0, 0.4, 1.0)`  # right 40%
-  - Template filenames: `first.png`, `second.png`, `third.png`
+  - Templates: place PNGs under `assets/templates/` per the state definitions.
 
 Notes
 - Template matching is sensitive to resolution/scale. Ensure templates are captured from the same window scale.
@@ -57,3 +77,6 @@ Notes
 
 Disclaimer
 - Use responsibly and in accordance with the game’s terms of service.
+
+
+
