@@ -7,7 +7,7 @@ from pathlib import Path
 
 from bot.config import DEFAULT_CONFIG
 from bot.core.state_machine import Context, StateMachine
-from bot.states import build_scouts_state, build_farm_wood_state
+from bot.states import build_scouts_state, build_farm_wood_state, build_farm_ore_state
 
 
 class App:
@@ -21,6 +21,9 @@ class App:
         self.btn_farm = tk.Button(root, text="Start Farm Wood", width=20, command=self.on_toggle_farm)
         self.btn_farm.pack(padx=12, pady=(0, 12))
 
+        self.btn_ore = tk.Button(root, text="Start Farm Ore", width=20, command=self.on_toggle_farm_ore)
+        self.btn_ore.pack(padx=12, pady=(0, 12))
+
         self.status = tk.StringVar(value="Idle")
         self.lbl = tk.Label(root, textvariable=self.status)
         self.lbl.pack(padx=12, pady=(0, 12))
@@ -32,6 +35,10 @@ class App:
         self._farm_machine: StateMachine | None = None
         self._farm_ctx: Context | None = None
         self._farm_running = False
+
+        self._ore_machine: StateMachine | None = None
+        self._ore_ctx: Context | None = None
+        self._ore_running = False
 
         self._build_machines()
 
@@ -45,6 +52,10 @@ class App:
         self._farm_machine = StateMachine(farm_state)
         self._farm_ctx = farm_ctx
 
+        ore_state, ore_ctx = build_farm_ore_state(cfg)
+        self._ore_machine = StateMachine(ore_state)
+        self._ore_ctx = ore_ctx
+
     def on_toggle_scouts(self) -> None:
         if not self._machine or not self._ctx:
             messagebox.showerror("Error", "State machine not initialized")
@@ -55,6 +66,15 @@ class App:
             self.btn.config(text="Start Scouts")
             self.status.set("Stopped")
         else:
+            # Stop other modes if running
+            if self._farm_running and self._farm_machine and self._farm_ctx:
+                self._farm_machine.stop(self._farm_ctx)
+                self._farm_running = False
+                self.btn_farm.config(text="Start Farm Wood")
+            if self._ore_running and self._ore_machine and self._ore_ctx:
+                self._ore_machine.stop(self._ore_ctx)
+                self._ore_running = False
+                self.btn_ore.config(text="Start Farm Ore")
 
             self._machine.start(self._ctx)
             self._running = True
@@ -66,11 +86,15 @@ class App:
         if not self._farm_machine or not self._farm_ctx:
             messagebox.showerror("Error", "Farm machine not initialized")
             return
-        # Stop scouts if running
+        # Stop other modes if running
         if self._running and self._machine and self._ctx:
             self._machine.stop(self._ctx)
             self._running = False
             self.btn.config(text="Start Scouts")
+        if self._ore_running and self._ore_machine and self._ore_ctx:
+            self._ore_machine.stop(self._ore_ctx)
+            self._ore_running = False
+            self.btn_ore.config(text="Start Farm Ore")
         if self._farm_running:
             self._farm_machine.stop(self._farm_ctx)
             self._farm_running = False
@@ -81,6 +105,30 @@ class App:
             self._farm_running = True
             self.btn_farm.config(text="Stop Farm Wood")
             self.status.set("Farm wood running...")
+
+    def on_toggle_farm_ore(self) -> None:
+        if not self._ore_machine or not self._ore_ctx:
+            messagebox.showerror("Error", "Farm ore machine not initialized")
+            return
+        # Stop other modes if running
+        if self._running and self._machine and self._ctx:
+            self._machine.stop(self._ctx)
+            self._running = False
+            self.btn.config(text="Start Scouts")
+        if self._farm_running and self._farm_machine and self._farm_ctx:
+            self._farm_machine.stop(self._farm_ctx)
+            self._farm_running = False
+            self.btn_farm.config(text="Start Farm Wood")
+        if self._ore_running:
+            self._ore_machine.stop(self._ore_ctx)
+            self._ore_running = False
+            self.btn_ore.config(text="Start Farm Ore")
+            self.status.set("Stopped")
+        else:
+            self._ore_machine.start(self._ore_ctx)
+            self._ore_running = True
+            self.btn_ore.config(text="Stop Farm Ore")
+            self.status.set("Farm ore running...")
 
 def run_app() -> None:
     root = tk.Tk()

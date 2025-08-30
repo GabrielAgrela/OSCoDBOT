@@ -20,6 +20,7 @@ Project Structure
 - `bot/states/`: One file per machine state
   - `scouts.py` (`build_scouts_state`)
   - `farm_wood.py` (`build_farm_wood_state`)
+  - `farm_ore.py` (`build_farm_ore_state`)
 - `assets/templates/`: Place your PNG templates here.
 
 Prerequisites
@@ -51,6 +52,9 @@ Usage
 1) Place template images in `assets/templates/`.
    - Scouts: `ScoutIdle.png`, `ScoutSelectExplore.png`, `ScoutExplore.png`.
    - Farm Wood: `Magnifier.png`, `MapIcon.png`, `LoggingCamp.png`, `LoggingCampEnabled.png`,
+     `SearchFarmButton.png`, `GatherButton.png`, `CreateLegionsButton.png`, `March.png`.
+   - Farm Ore: `Magnifier.png`, `MapIcon.png`, one of the ore resource icons such as
+     `OreMine.png` or `Quarry.png` (optionally their `*Enabled.png` variants), plus
      `SearchFarmButton.png`, `GatherButton.png`, `CreateLegionsButton.png`, `March.png`.
 2) Run the UI:
    python main.py
