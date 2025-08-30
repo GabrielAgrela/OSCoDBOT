@@ -99,3 +99,52 @@ def enable_dpi_awareness() -> None:
             ctypes.windll.user32.SetProcessDPIAware()
         except Exception:
             pass
+
+
+def set_window_topmost(hwnd: int, topmost: bool = True) -> None:
+    """Set or clear the always-on-top flag for a window.
+
+    On Windows this uses SetWindowPos with HWND_TOPMOST / HWND_NOTOPMOST.
+    """
+    try:
+        insert_after = win32con.HWND_TOPMOST if topmost else win32con.HWND_NOTOPMOST
+        flags = win32con.SWP_NOMOVE | win32con.SWP_NOSIZE | win32con.SWP_NOACTIVATE
+        win32gui.SetWindowPos(hwnd, insert_after, 0, 0, 0, 0, flags)
+    except Exception:
+        pass
+
+
+def set_window_frameless(hwnd: int, frameless: bool = True) -> None:
+    """Toggle window frame (title bar and borders) on Windows.
+
+    Removes WS_CAPTION/WS_THICKFRAME/WS_MINIMIZE/WS_MAXIMIZE/WS_SYSMENU for frameless.
+    """
+    try:
+        style = win32gui.GetWindowLong(hwnd, win32con.GWL_STYLE)
+        if frameless:
+            style &= ~(
+                win32con.WS_CAPTION
+                | win32con.WS_THICKFRAME
+                | win32con.WS_MINIMIZEBOX
+                | win32con.WS_MAXIMIZEBOX
+                | win32con.WS_SYSMENU
+            )
+        else:
+            # Restore a typical overlapped window style
+            style |= (
+                win32con.WS_CAPTION
+                | win32con.WS_THICKFRAME
+                | win32con.WS_MINIMIZEBOX
+                | win32con.WS_MAXIMIZEBOX
+                | win32con.WS_SYSMENU
+            )
+        win32gui.SetWindowLong(hwnd, win32con.GWL_STYLE, style)
+        flags = (
+            win32con.SWP_NOMOVE
+            | win32con.SWP_NOSIZE
+            | win32con.SWP_NOZORDER
+            | win32con.SWP_FRAMECHANGED
+        )
+        win32gui.SetWindowPos(hwnd, 0, 0, 0, 0, 0, flags)
+    except Exception:
+        pass

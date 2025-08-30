@@ -7,6 +7,7 @@ from pathlib import Path
 from typing import Optional, Protocol, Sequence, Dict, List
 
 import numpy as np
+from .window import bring_to_front, find_window_by_title_substr
 
 
 @dataclass
@@ -67,6 +68,17 @@ class SequenceState:
             if ctx.stop_event.is_set():
                 return
             try:
+                # Bring target window to foreground before each action
+                try:
+                    hwnd = ctx.hwnd
+                    if hwnd is None:
+                        hwnd = find_window_by_title_substr(ctx.window_title_substr)
+                        if hwnd is not None:
+                            ctx.hwnd = hwnd
+                    if hwnd is not None:
+                        bring_to_front(hwnd)
+                except Exception:
+                    pass
                 _ = action.run(ctx)
             except Exception as exc:
                 # Keep loop resilient; log to console and continue
@@ -138,6 +150,17 @@ class GraphState:
             if ctx.stop_event.is_set():
                 return
             try:
+                # Bring target window to foreground before each action
+                try:
+                    hwnd = ctx.hwnd
+                    if hwnd is None:
+                        hwnd = find_window_by_title_substr(ctx.window_title_substr)
+                        if hwnd is not None:
+                            ctx.hwnd = hwnd
+                    if hwnd is not None:
+                        bring_to_front(hwnd)
+                except Exception:
+                    pass
                 res = action.run(ctx)
                 if res is not None:
                     last_result = res
