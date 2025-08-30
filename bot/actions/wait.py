@@ -12,7 +12,6 @@ class Wait(Action):
     seconds: float
 
     def run(self, ctx: Context) -> None:
-        print(f"[Wait] seconds={self.seconds}")
         end_by = time.time() + self.seconds
         while time.time() < end_by:
             if ctx.stop_event.is_set():

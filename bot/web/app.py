@@ -4,6 +4,7 @@ from dataclasses import dataclass
 from typing import Dict, List, Optional, Tuple
 
 from flask import Flask, jsonify, render_template, request
+import logging
 
 from bot.config import DEFAULT_CONFIG, AppConfig
 from bot.core.state_machine import Context, State, StateMachine
@@ -19,6 +20,9 @@ class Running:
 
 
 app = Flask(__name__, template_folder="templates", static_folder="static")
+# Suppress Flask/Werkzeug request logs in console
+logging.getLogger("werkzeug").setLevel(logging.ERROR)
+app.logger.disabled = True
 
 _running: Optional[Running] = None
 

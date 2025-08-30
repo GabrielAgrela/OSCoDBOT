@@ -42,15 +42,12 @@ class FindAndClick(Action):
             return False
         left, top, width, height = ctx.window_rect
         roi_xywh = pct_region_to_pixels((width, height), self.region_pct)
-        print(f"[FindAndClick] region_pct={self.region_pct} -> roi={roi_xywh} threshold={self.threshold}")
 
         for fname in self.templates:
             tpl = self._load(ctx.templates_dir, fname)
             if tpl is None:
-                print(f"[FindAndClick] template missing: {fname}")
                 continue
             found, top_left_xy, score = match_template(ctx.frame_bgr, tpl, self.threshold, roi_xywh)
-            print(f"[FindAndClick] tpl={fname} found={found} score={score:.3f} top_left={top_left_xy}")
             if not found:
                 continue
 
@@ -59,7 +56,10 @@ class FindAndClick(Action):
             cy = top_left_xy[1] + tpl_h // 2
             screen_x = left + cx
             screen_y = top + cy
-            print(f"[FindAndClick] click tpl={fname} center_win=({cx},{cy}) center_screen=({screen_x},{screen_y}) size=({tpl_w}x{tpl_h})")
+            try:
+                print(f"[FindAndClick] click tpl={fname} score={score:.3f}")
+            except Exception:
+                pass
 
             ctx.last_match = MatchResult(
                 score=score,

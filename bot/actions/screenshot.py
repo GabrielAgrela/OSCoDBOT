@@ -41,7 +41,3 @@ class Screenshot(Action):
         frame_bgr = raw[:, :, :3]
         ctx.frame_bgr = frame_bgr
         ctx.window_rect = rect.to_tuple()
-        try:
-            print(f"[Screenshot] hwnd={hwnd} rect={ctx.window_rect} frame={frame_bgr.shape[1]}x{frame_bgr.shape[0]}")
-        except Exception:
-            pass

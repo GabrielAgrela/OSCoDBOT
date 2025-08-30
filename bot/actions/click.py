@@ -19,7 +19,6 @@ class ClickPercent(Action):
             return
         x = left + int(max(0.0, min(1.0, self.x_pct)) * width)
         y = top + int(max(0.0, min(1.0, self.y_pct)) * height)
-        print(f"[ClickPercent] pct=({self.x_pct:.2f},{self.y_pct:.2f}) -> screen=({x},{y}) in win_rect={(left, top, width, height)}")
         if ctx.hwnd is not None:
             bring_to_front(ctx.hwnd)
             time.sleep(0.05)
