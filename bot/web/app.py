@@ -4,6 +4,7 @@ from dataclasses import dataclass
 from typing import Dict, List, Optional, Tuple
 
 from flask import Flask, jsonify, render_template, request
+import time as _time
 import logging
 
 from bot.config import DEFAULT_CONFIG, AppConfig
@@ -99,6 +100,33 @@ def api_logs():
         since = 0
     entries = logs.get_since(since)
     return jsonify({"logs": entries})
+
+
+@app.get("/api/metrics")
+def api_metrics():
+    if not _running or not _running.ctx:
+        return jsonify({"running": False})
+    ctx = _running.ctx
+    now = _time.time()
+    try:
+        since = max(0.0, now - float(getattr(ctx, "last_progress_ts", 0.0)))
+    except Exception:
+        since = 0.0
+    data = {
+        "running": True,
+        "kind": _running.kind,
+        "modes": list(_running.modes),
+        "thread_alive": bool(_running.machine and _running.machine._thread and _running.machine._thread.is_alive()),
+        "metrics": {
+            "current_state": getattr(ctx, "current_state_name", ""),
+            "current_step": getattr(ctx, "current_graph_step", ""),
+            "last_action": getattr(ctx, "last_action_name", ""),
+            "last_action_duration_s": float(getattr(ctx, "last_action_duration_s", 0.0)),
+            "cycle_count": int(getattr(ctx, "cycle_count", 0)),
+            "since_last_progress_s": since,
+        }
+    }
+    return jsonify(data)
 
 
 def run_web(host: str = "127.0.0.1", port: int = 5000, debug: bool = False) -> None:

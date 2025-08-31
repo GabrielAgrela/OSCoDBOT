@@ -47,13 +47,23 @@ class Screenshot(Action):
                 return
         try:
             raw = np.array(sct.grab(monitor))  # BGRA
-        except Exception:
+        except Exception as exc:
+            try:
+                from bot.core import logs
+                logs.add(f"[ScreenshotError] grab failed: {exc}", level="err")
+            except Exception:
+                pass
             # On grab failure, try to recreate the mss handle once
             try:
                 sct = mss.mss()
                 setattr(ctx, "_mss", sct)
                 raw = np.array(sct.grab(monitor))
-            except Exception:
+            except Exception as exc2:
+                try:
+                    from bot.core import logs
+                    logs.add(f"[ScreenshotError] recreate failed: {exc2}", level="err")
+                except Exception:
+                    pass
                 return
         frame_bgr = raw[:, :, :3]
         ctx.frame_bgr = frame_bgr
