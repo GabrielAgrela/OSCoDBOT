@@ -73,12 +73,14 @@ def _env_float(name: str, default: float) -> float:
 def make_config() -> AppConfig:
     # Load .env if present
     _load_env_file()
-    # Only margins and title are pulled from env to keep behavior minimal
+    # Pull configurable values from env
     window_title = os.getenv("WINDOW_TITLE_SUBSTR", "Call of Dragons")
     left_pct = _env_float("UI_MARGIN_LEFT_PCT", 0.004)
     top_pct = _env_float("UI_MARGIN_TOP_PCT", 0.56)
+    match_threshold = _env_float("MATCH_THRESHOLD", 0.9)
     return AppConfig(
         window_title_substr=window_title,
+        match_threshold=match_threshold,
         ui_margin_left_pct=left_pct,
         ui_margin_top_pct=top_pct,
     )

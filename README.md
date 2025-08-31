@@ -72,15 +72,16 @@ Behavior
 
 
 Configuration
-- Defaults are set in `bot/config.py`:
-  - `WINDOW_TITLE_SUBSTR = "Call of Dragons"`
-  - `MATCH_THRESHOLD = 0.85`
-  - `SIDE_REGION_PCT = (0.6, 0.0, 0.4, 1.0)`  # right 40%
-  - Templates: place PNGs under `assets/templates/` per the state definitions.
+- Use `.env` to override defaults (parsed at startup):
+  - `WINDOW_TITLE_SUBSTR=Call of Dragons`
+  - `UI_MARGIN_LEFT_PCT=0.4%` and `UI_MARGIN_TOP_PCT=56%`
+  - `MATCH_THRESHOLD=90%` (or `0.9`)
+- Defaults are defined in `bot/config.py` if not provided via `.env`.
+- Templates: place PNGs under `assets/templates/` per the state definitions.
 
 Notes
 - Template matching is sensitive to resolution/scale. Ensure templates are captured from the same window scale.
-- If matching is noisy, adjust `MATCH_THRESHOLD` in `bot/config.py`.
+- If matching is noisy, adjust `MATCH_THRESHOLD` via `.env` (e.g., `85%` or `0.85`).
 - If the window title differs, update `WINDOW_TITLE_SUBSTR`.
 
 Disclaimer
