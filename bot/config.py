@@ -40,6 +40,10 @@ class AppConfig:
     ui_topmost: bool = True           # Keep UI always on top
     ui_frameless: bool = True         # Try to remove title bar/borders
 
+    # Logging
+    log_to_file: bool = True
+    log_file: Path = Path("bot.log")
+
 
 def _load_env_file() -> None:
     """Lightweight .env loader without external dependency.
@@ -108,6 +112,9 @@ def make_config() -> AppConfig:
     ui_pin_to_game = _env_bool("UI_PIN_TO_GAME", True)
     ui_topmost = _env_bool("UI_TOPMOST", True)
     ui_frameless = _env_bool("UI_FRAMELESS", True)
+    log_to_file = _env_bool("LOG_TO_FILE", True)
+    log_file_env = os.getenv("LOG_FILE", "").strip()
+    log_file = Path(log_file_env) if log_file_env else Path("bot.log")
     return AppConfig(
         window_title_substr=window_title,
         match_threshold=match_threshold,
@@ -120,6 +127,8 @@ def make_config() -> AppConfig:
         ui_pin_to_game=ui_pin_to_game,
         ui_topmost=ui_topmost,
         ui_frameless=ui_frameless,
+        log_to_file=log_to_file,
+        log_file=log_file,
     )
 
 
