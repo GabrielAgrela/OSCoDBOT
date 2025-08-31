@@ -155,7 +155,7 @@ def build_farm_state(cfg: AppConfig, spec: FarmSpec) -> tuple[State, Context]:
                     name="MarchFullCheck",
                     templates=["MarchFullButton.png"],
                     region_pct=(0.0, 0.0, 1.0, 1.0),
-                    threshold=cfg.match_threshold,
+                    threshold=0.98,
                 ),
             ],
             on_success="CooldownAndEnd",
