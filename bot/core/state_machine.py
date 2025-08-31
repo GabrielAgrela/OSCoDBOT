@@ -37,6 +37,8 @@ class Context:
 
     # Control
     stop_event: threading.Event = field(default_factory=threading.Event)
+    # Capture handle (reused per thread to avoid resource churn/leaks)
+    _mss: Optional[object] = None
     # Debugging
     save_shots: bool = False
     shots_dir: Path = Path("debug_captures")
@@ -117,6 +119,19 @@ class StateMachine:
         if self._thread and self._thread.is_alive():
             self._thread.join(timeout=2.0)
         self._thread = None
+        # Dispose capture handle if present
+        try:
+            sct = getattr(ctx, "_mss", None)
+            if sct is not None:
+                try:
+                    # mss() instances expose close()
+                    sct.close()
+                except Exception:
+                    pass
+                try:
+                    setattr(ctx, "_mss", None)
+                except Exception:
+                    pass
 
     def _run_loop(self, ctx: Context) -> None:
         while not ctx.stop_event.is_set():

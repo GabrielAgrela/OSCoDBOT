@@ -37,9 +37,24 @@ class Screenshot(Action):
             "width": rect.width,
             "height": rect.height,
         }
-        # Use a short-lived mss instance bound to current thread
-        with mss.mss() as sct:
+        # Reuse a per-thread mss instance stored in context to avoid GDI leaks
+        sct = getattr(ctx, "_mss", None)
+        if sct is None:
+            try:
+                sct = mss.mss()
+                setattr(ctx, "_mss", sct)
+            except Exception:
+                return
+        try:
             raw = np.array(sct.grab(monitor))  # BGRA
+        except Exception:
+            # On grab failure, try to recreate the mss handle once
+            try:
+                sct = mss.mss()
+                setattr(ctx, "_mss", sct)
+                raw = np.array(sct.grab(monitor))
+            except Exception:
+                return
         frame_bgr = raw[:, :, :3]
         ctx.frame_bgr = frame_bgr
         ctx.window_rect = rect.to_tuple()
