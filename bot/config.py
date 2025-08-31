@@ -43,6 +43,8 @@ class AppConfig:
     # Logging
     log_to_file: bool = True
     log_file: Path = Path("bot.log")
+    log_max_bytes: int = 1_048_576  # 1 MB
+    log_backups: int = 5            # number of rotated files to keep
 
 
 def _load_env_file() -> None:
@@ -115,6 +117,15 @@ def make_config() -> AppConfig:
     log_to_file = _env_bool("LOG_TO_FILE", True)
     log_file_env = os.getenv("LOG_FILE", "").strip()
     log_file = Path(log_file_env) if log_file_env else Path("bot.log")
+    # Parse size/backups (fallback to defaults on invalid values)
+    try:
+        log_max_bytes = int(os.getenv("LOG_MAX_BYTES", "1048576").strip())
+    except Exception:
+        log_max_bytes = 1_048_576
+    try:
+        log_backups = int(os.getenv("LOG_BACKUPS", "5").strip())
+    except Exception:
+        log_backups = 5
     return AppConfig(
         window_title_substr=window_title,
         match_threshold=match_threshold,
@@ -129,6 +140,8 @@ def make_config() -> AppConfig:
         ui_frameless=ui_frameless,
         log_to_file=log_to_file,
         log_file=log_file,
+        log_max_bytes=log_max_bytes,
+        log_backups=log_backups,
     )
 
 
