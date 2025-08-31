@@ -8,7 +8,7 @@ from typing import List, Optional, Sequence, Tuple
 
 import numpy as np
 
-from bot.core.image import load_template_bgr, match_template, pct_region_to_pixels
+from bot.core.image import load_template_bgr_mask, match_template, pct_region_to_pixels
 from bot.core.state_machine import Action, Context, MatchResult
 from bot.core.window import bring_to_front, click_screen_xy
 from bot.core import logs
@@ -32,17 +32,17 @@ class FindAndClick(Action):
         if self._tpl_cache is None:
             self._tpl_cache = {}
 
-    def _load(self, templates_dir: Path, fname: str) -> Optional[np.ndarray]:
+    def _load(self, templates_dir: Path, fname: str) -> Optional[tuple[np.ndarray, Optional[np.ndarray]]]:
         self._ensure_cache()
         if fname in self._tpl_cache:
             return self._tpl_cache[fname]
         path = (templates_dir / fname).as_posix()
         try:
-            img = load_template_bgr(path)
+            img, mask = load_template_bgr_mask(path)
         except FileNotFoundError:
             return None
-        self._tpl_cache[fname] = img
-        return img
+        self._tpl_cache[fname] = (img, mask)
+        return img, mask
 
     def run(self, ctx: Context) -> Optional[bool]:
         if ctx.frame_bgr is None:
@@ -74,10 +74,11 @@ class FindAndClick(Action):
                 pass
 
         for fname in self.templates:
-            tpl = self._load(ctx.templates_dir, fname)
-            if tpl is None:
+            tpl_pair = self._load(ctx.templates_dir, fname)
+            if tpl_pair is None:
                 continue
-            found, top_left_xy, score = match_template(ctx.frame_bgr, tpl, self.threshold, roi_xywh)
+            tpl, tpl_mask = tpl_pair
+            found, top_left_xy, score = match_template(ctx.frame_bgr, tpl, self.threshold, roi_xywh, mask=tpl_mask)
             msg = f"[FindAndClick] tpl={fname} score={score:.3f} found={found}"
             # Console color (best-effort) and UI log
             try:

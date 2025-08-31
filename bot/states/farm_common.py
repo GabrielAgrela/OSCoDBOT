@@ -64,7 +64,7 @@ def build_farm_state(cfg: AppConfig, spec: FarmSpec) -> tuple[State, Context]:
                 FindAndClick(
                     name="Magnifier",
                     templates=["Magnifier.png"],
-                    region_pct=(0.0, 0.0, 1.0, 1.0),
+                    region_pct=(0.0, 0.7, 0.1, 0.75),
                     threshold=0.75,
                 ),
                 Wait(name="wait_after_magnifier", seconds=1.0),
@@ -164,7 +164,7 @@ def build_farm_state(cfg: AppConfig, spec: FarmSpec) -> tuple[State, Context]:
         GraphStep(
             name="CooldownAndEnd",
             actions=[
-                SetCooldown(name=f"{key}_set_cooldown", key=key, seconds=60*30),
+                SetCooldown(name=f"{key}_set_cooldown", key=key, seconds=10),
             ],
             on_success="EndNoLegions",
             on_failure="EndNoLegions",
