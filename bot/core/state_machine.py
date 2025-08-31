@@ -132,6 +132,8 @@ class StateMachine:
                     setattr(ctx, "_mss", None)
                 except Exception:
                     pass
+        except Exception:
+            pass
 
     def _run_loop(self, ctx: Context) -> None:
         while not ctx.stop_event.is_set():
