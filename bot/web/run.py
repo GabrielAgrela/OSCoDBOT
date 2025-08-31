@@ -17,6 +17,7 @@ from bot.core.window import (
     get_client_rect_screen,
     set_window_topmost,
     set_window_frameless,
+    move_window_xy,
 )
 from bot.config import DEFAULT_CONFIG
 from .app import app
@@ -27,7 +28,7 @@ def _serve():
     app.run(host="127.0.0.1", port=5000, debug=False, use_reloader=False, threaded=True)
 
 
-def _stick_left_loop(window) -> None:
+def _stick_left_loop(_window) -> None:
     """Continuously pin the UI window to the left side of the game window.
 
     Margins are specified as a percentage of the game client size
@@ -44,10 +45,12 @@ def _stick_left_loop(window) -> None:
                 x = rect.left + int(rect.width * margin_left_pct)
                 y = rect.top + int(rect.height * margin_top_pct)
                 try:
-                    # Move the webview window to stick to the left inside the game window
-                    window.move(x, y)
+                    # Move our UI window via Win32 to avoid backend thread-safety issues
+                    ui_hwnd = find_window_by_title_substr("Call of the Dragons Bot")
+                    if ui_hwnd:
+                        move_window_xy(ui_hwnd, x, y)
                 except Exception:
-                    # Ignore backend-specific issues and retry next tick
+                    # Ignore issues and retry next tick
                     pass
         except Exception:
             pass
@@ -91,7 +94,7 @@ def run_app() -> None:
     # Give server a moment to start
     time.sleep(0.5)
     url = "http://127.0.0.1:5000"
-    if HAS_WEBVIEW:
+    if HAS_WEBVIEW and DEFAULT_CONFIG.use_webview:
         # Smaller, compact window to fit inside the game client. Prefer frameless/on_top if supported.
         try:
             window = webview.create_window(
@@ -124,11 +127,14 @@ def run_app() -> None:
                     resizable=False,
                 )
         # Start a background thread to keep the window pinned to the left of the game window
-        threading.Thread(target=_stick_left_loop, args=(window,), daemon=True).start()
+        if DEFAULT_CONFIG.ui_pin_to_game:
+            threading.Thread(target=_stick_left_loop, args=(window,), daemon=True).start()
         # Reassert topmost via Win32 as a fallback and to keep it above if the game grabs focus
-        threading.Thread(target=_ensure_topmost_loop, args=("Call of the Dragons Bot",), daemon=True).start()
+        if DEFAULT_CONFIG.ui_topmost:
+            threading.Thread(target=_ensure_topmost_loop, args=("Call of the Dragons Bot",), daemon=True).start()
         # Try to enforce frameless via Win32 if backend doesn't support frameless
-        threading.Thread(target=_frameless_loop, args=("Call of the Dragons Bot",), daemon=True).start()
+        if DEFAULT_CONFIG.ui_frameless:
+            threading.Thread(target=_frameless_loop, args=("Call of the Dragons Bot",), daemon=True).start()
         webview.start()
     else:
         print("pywebview not installed. Opening in your default browser instead.\nInstall with: pip install pywebview")

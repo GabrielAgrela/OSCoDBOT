@@ -172,3 +172,16 @@ def set_window_frameless(hwnd: int, frameless: bool = True) -> None:
         win32gui.SetWindowPos(hwnd, 0, 0, 0, 0, 0, flags)
     except Exception:
         pass
+
+
+def move_window_xy(hwnd: int, x: int, y: int) -> None:
+    """Move a window to absolute screen coordinates using Win32.
+
+    Uses SetWindowPos with SWP_NOSIZE | SWP_NOZORDER | SWP_NOACTIVATE to avoid
+    resizing, z-order changes or stealing focus. Safe to call from any thread.
+    """
+    try:
+        flags = win32con.SWP_NOSIZE | win32con.SWP_NOZORDER | win32con.SWP_NOACTIVATE
+        win32gui.SetWindowPos(hwnd, 0, int(x), int(y), 0, 0, flags)
+    except Exception:
+        pass

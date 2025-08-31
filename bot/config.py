@@ -34,6 +34,12 @@ class AppConfig:
     ui_margin_left_pct: float = 0.004  # ~0.4% of width
     ui_margin_top_pct: float = 0.56    # ~56% of height
 
+    # UI behavior
+    use_webview: bool = True          # If false, open in browser instead of embedding
+    ui_pin_to_game: bool = True       # Keep UI window pinned near the game window
+    ui_topmost: bool = True           # Keep UI always on top
+    ui_frameless: bool = True         # Try to remove title bar/borders
+
 
 def _load_env_file() -> None:
     """Lightweight .env loader without external dependency.
@@ -98,6 +104,10 @@ def make_config() -> AppConfig:
     save_shots = _env_bool("SAVE_SHOTS", False)
     shots_dir_env = os.getenv("SHOTS_DIR", "").strip()
     shots_dir = Path(shots_dir_env) if shots_dir_env else Path("debug_captures")
+    use_webview = _env_bool("USE_WEBVIEW", True)
+    ui_pin_to_game = _env_bool("UI_PIN_TO_GAME", True)
+    ui_topmost = _env_bool("UI_TOPMOST", True)
+    ui_frameless = _env_bool("UI_FRAMELESS", True)
     return AppConfig(
         window_title_substr=window_title,
         match_threshold=match_threshold,
@@ -106,6 +116,10 @@ def make_config() -> AppConfig:
         click_snap_back=click_snap_back,
         save_shots=save_shots,
         shots_dir=shots_dir,
+        use_webview=use_webview,
+        ui_pin_to_game=ui_pin_to_game,
+        ui_topmost=ui_topmost,
+        ui_frameless=ui_frameless,
     )
 
 

@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 from functools import lru_cache
-from pathlib import Path
 from typing import Tuple, Optional
 
 import cv2
@@ -99,3 +98,4 @@ def match_template(
         # Location within ROI (top-left)
         return True, (rx + max_loc[0], ry + max_loc[1]), float(max_val)
     return False, (0, 0), float(max_val)
+
