@@ -164,7 +164,7 @@ def build_farm_state(cfg: AppConfig, spec: FarmSpec) -> tuple[State, Context]:
         GraphStep(
             name="CooldownAndEnd",
             actions=[
-                SetCooldown(name=f"{key}_set_cooldown", key=key, seconds=10),
+                SetCooldown(name=f"{key}_set_cooldown", key=key, seconds=60*30),
             ],
             on_success="EndNoLegions",
             on_failure="EndNoLegions",

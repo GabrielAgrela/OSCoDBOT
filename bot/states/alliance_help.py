@@ -23,7 +23,7 @@ def build_alliance_help_state(cfg: AppConfig) -> tuple[State, Context]:
                     name="AllianceHelp",
                     templates=["AllianceHelp.png"],
                     region_pct=(0.0, 0.0, 1.0, 1.0),
-                    threshold=cfg.match_threshold,
+                    threshold=0.99,
                 ),
             ],
             on_success="EndCycleStep",
