@@ -5,7 +5,16 @@ from typing import Sequence, Tuple
 
 from bot.config import AppConfig
 from bot.core.state_machine import Context, GraphState, GraphStep, State
-from bot.actions import Screenshot, FindAndClick, Wait, ClickPercent, EndCycle
+from bot.actions import (
+    Screenshot,
+    FindAndClick,
+    Wait,
+    ClickPercent,
+    EndCycle,
+    CheckTemplate,
+    CooldownGate,
+    SetCooldown,
+)
 
 
 @dataclass(frozen=True)
@@ -40,9 +49,17 @@ def build_farm_state(cfg: AppConfig, spec: FarmSpec) -> tuple[State, Context]:
     res_templates = list(spec.resource_templates)
 
     steps = [
+        # Gate to skip running this state while in cooldown
+        GraphStep(
+            name="CooldownGate",
+            actions=[CooldownGate(name=f"{key}_cooldown_gate", key=key)],
+            on_success="OpenMagnifier",
+            on_failure="CooldownGate",
+        ),
         GraphStep(
             name="OpenMagnifier",
             actions=[
+                Wait(name="wait_before_screenshot", seconds=2.0),
                 Screenshot(name=f"{key}_cap_open_1"),
                 FindAndClick(
                     name="Magnifier",
@@ -127,8 +144,30 @@ def build_farm_state(cfg: AppConfig, spec: FarmSpec) -> tuple[State, Context]:
                 ),
                 Wait(name="wait_after_gather", seconds=1.0),
             ],
-            on_success="CreateLegionsButton",
+            on_success="CheckMarchFull",
             on_failure="TapCenterThenGather",
+        ),
+        GraphStep(
+            name="CheckMarchFull",
+            actions=[
+                Screenshot(name=f"{key}_cap_marchfull_chk"),
+                CheckTemplate(
+                    name="MarchFullCheck",
+                    templates=["MarchFullButton.png"],
+                    region_pct=(0.0, 0.0, 1.0, 1.0),
+                    threshold=cfg.match_threshold,
+                ),
+            ],
+            on_success="CooldownAndEnd",
+            on_failure="CreateLegionsButton",
+        ),
+        GraphStep(
+            name="CooldownAndEnd",
+            actions=[
+                SetCooldown(name=f"{key}_set_cooldown", key=key, seconds=60*30),
+            ],
+            on_success="EndNoLegions",
+            on_failure="EndNoLegions",
         ),
         GraphStep(
             name="TapCenterThenGather",
@@ -168,8 +207,8 @@ def build_farm_state(cfg: AppConfig, spec: FarmSpec) -> tuple[State, Context]:
                 Wait(name="wait_after_end_click", seconds=1.0),
                 EndCycle(name="end_cycle"),
             ],
-            on_failure="OpenMagnifier",
-            on_success="OpenMagnifier",
+            on_failure="CooldownGate",
+            on_success="CooldownGate",
         ),
         GraphStep(
             name="March",
@@ -183,11 +222,10 @@ def build_farm_state(cfg: AppConfig, spec: FarmSpec) -> tuple[State, Context]:
                 ),
                 Wait(name="wait_after_march", seconds=1.0),
             ],
-            on_success="OpenMagnifier",
+            on_success="CooldownGate",
             on_failure="EndNoLegions",
         ),
     ]
 
-    state = GraphState(steps=steps, start="OpenMagnifier", loop_sleep_s=0.05)
+    state = GraphState(steps=steps, start="CooldownGate", loop_sleep_s=0.05)
     return state, ctx
-
