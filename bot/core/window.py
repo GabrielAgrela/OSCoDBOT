@@ -3,6 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Optional, Tuple
 import ctypes
+import random
 
 import win32api
 import win32con
@@ -71,13 +72,28 @@ def bring_to_front(hwnd: int) -> None:
 
 
 def click_screen_xy(x: int, y: int) -> None:
-    # Remember current cursor position, click at (x, y), then return immediately
+    # Remember current cursor position, click at (x, y) with slight jitter, then return
     try:
         prev_pos = win32api.GetCursorPos()
     except Exception:
         prev_pos = None
     try:
-        win32api.SetCursorPos((x, y))
+        try:
+            dx = random.randint(-3, 3)
+            dy = random.randint(-3, 3)
+        except Exception:
+            dx = 0
+            dy = 0
+        rx = x + dx
+        ry = y + dy
+        try:
+            sw = win32api.GetSystemMetrics(0)
+            sh = win32api.GetSystemMetrics(1)
+            rx = max(0, min(rx, max(0, sw - 1)))
+            ry = max(0, min(ry, max(0, sh - 1)))
+        except Exception:
+            pass
+        win32api.SetCursorPos((rx, ry))
         win32api.mouse_event(win32con.MOUSEEVENTF_LEFTDOWN, 0, 0, 0, 0)
         win32api.mouse_event(win32con.MOUSEEVENTF_LEFTUP, 0, 0, 0, 0)
     finally:
