@@ -57,7 +57,7 @@ def build_farm_wood_state(cfg: AppConfig) -> tuple[State, Context]:
                 Wait(name="wait_after_magnifier2", seconds=1.0),
             ],
             on_success="LoggingCampAny",
-            on_failure="OpenMagnifier",
+            on_failure="EndNoLegions",
         ),
         GraphStep(
             name="LoggingCampAny",
@@ -158,7 +158,7 @@ def build_farm_wood_state(cfg: AppConfig) -> tuple[State, Context]:
                 Wait(name="wait_after_march", seconds=1.0),
             ],
             on_success="OpenMagnifier",
-            on_failure="EndNoLegions",
+            on_failure="EndNEndNoLegionsoLegions",
         ),
     ]
     state = GraphState(steps=steps, start="OpenMagnifier", loop_sleep_s=0.05)

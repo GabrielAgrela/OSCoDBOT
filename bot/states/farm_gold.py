@@ -57,7 +57,7 @@ def build_farm_gold_state(cfg: AppConfig) -> tuple[State, Context]:
                 Wait(name="wait_after_magnifier2", seconds=1.0),
             ],
             on_success="GoldAny",
-            on_failure="OpenMagnifier",
+            on_failure="EndNoLegions",
         ),
         GraphStep(
             name="GoldAny",
