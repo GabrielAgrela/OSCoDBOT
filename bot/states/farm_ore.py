@@ -57,7 +57,7 @@ def build_farm_ore_state(cfg: AppConfig) -> tuple[State, Context]:
                 Wait(name="wait_after_magnifier2", seconds=1.0),
             ],
             on_success="OreAny",
-            on_failure="OpenMagnifier",
+            on_failure="EndNoLegions",
         ),
         GraphStep(
             name="OreAny",
@@ -69,12 +69,6 @@ def build_farm_ore_state(cfg: AppConfig) -> tuple[State, Context]:
                     templates=[
                         "OreMine.png",
                         "OreMineEnabled.png",
-                        "Quarry.png",
-                        "QuarryEnabled.png",
-                        "Stone.png",
-                        "StoneEnabled.png",
-                        "IronMine.png",
-                        "IronMineEnabled.png",
                     ],
                     region_pct=(0.0, 0.0, 1.0, 1.0),
                     threshold=cfg.match_threshold,
