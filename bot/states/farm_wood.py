@@ -87,7 +87,7 @@ def build_farm_wood_state(cfg: AppConfig) -> tuple[State, Context]:
                 Wait(name="wait_after_search", seconds=2.0),
             ],
             on_success="GatherButton",
-            on_failure="SearchFarmButton",
+            on_failure="EndNoLegions",
         ),
         GraphStep(
             name="GatherButton",
