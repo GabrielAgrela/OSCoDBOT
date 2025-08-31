@@ -50,21 +50,22 @@ except Exception:
 def add(text: str, level: Level = "info") -> None:
     global _next_id
     now = time.time()
+    # First, update in-memory buffer under lock
     with _lock:
         entry = LogEntry(id=_next_id, ts=now, level=level, text=text)
         _buf.append(entry)
         _next_id += 1
-        # Write-through to file if configured
-        if _fh is not None:
-            try:
-                # Timestamp: YYYY-MM-DD HH:MM:SS.mmm
-                import datetime as _dt
-                t = _dt.datetime.fromtimestamp(now)
-                ts = t.strftime("%Y-%m-%d %H:%M:%S.%f")[:-3]
-                _fh.write(f"[{ts}] {level.upper()}: {text}\n")
-                _fh.flush()
-            except Exception:
-                pass
+    # Then, write to file outside the lock to avoid blocking other threads
+    if _fh is not None:
+        try:
+            # Timestamp: YYYY-MM-DD HH:MM:SS.mmm
+            import datetime as _dt
+            t = _dt.datetime.fromtimestamp(now)
+            ts = t.strftime("%Y-%m-%d %H:%M:%S.%f")[:-3]
+            _fh.write(f"[{ts}] {level.upper()}: {text}\n")
+            _fh.flush()
+        except Exception:
+            pass
 
 
 def get_since(since_id: Optional[int]) -> List[Dict]:

@@ -190,8 +190,31 @@ class StateMachine:
                     cyc = int(getattr(ctx, "cycle_count", 0))
                     logs.add(f"[Watchdog] step={step} action={act} last_dur={dur:.2f}s since_progress={since:.1f}s cycles={cyc}")
                     last_log = now
+                if since > 45.0:
+                    # Proactively try to recover capture/window handles
+                    try:
+                        sct = getattr(ctx, "_mss", None)
+                        if sct is not None:
+                            try:
+                                sct.close()
+                            except Exception:
+                                pass
+                            try:
+                                setattr(ctx, "_mss", None)
+                            except Exception:
+                                pass
+                        logs.add("[WatchdogRecover] Reset capture handle after 45s stall", level="info")
+                    except Exception:
+                        pass
                 if since > 60.0:
                     logs.add(f"[WatchdogStall] No progress for {since:.1f}s at step={step} action={act}", level="err")
+                    # Nudge the graph to end the current cycle so orchestrators can switch modes
+                    try:
+                        ctx.end_cycle = True
+                        # Force window re-discovery next cycle
+                        ctx.hwnd = None
+                    except Exception:
+                        pass
             except Exception:
                 pass
             time.sleep(2.0)
