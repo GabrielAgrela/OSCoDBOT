@@ -9,6 +9,7 @@ import logging
 from bot.config import DEFAULT_CONFIG, AppConfig
 from bot.core.state_machine import Context, State, StateMachine
 from bot.states import MODES as STATE_MODES, build_alternating_state, build_round_robin_state
+from bot.core import logs
 
 
 @dataclass
@@ -87,6 +88,17 @@ def api_start():
 def api_stop():
     _stop_running()
     return jsonify({"ok": True})
+
+
+@app.get("/api/logs")
+def api_logs():
+    try:
+        since_raw = request.args.get("since")
+        since = int(since_raw) if since_raw is not None else 0
+    except Exception:
+        since = 0
+    entries = logs.get_since(since)
+    return jsonify({"logs": entries})
 
 
 def run_web(host: str = "127.0.0.1", port: int = 5000, debug: bool = False) -> None:

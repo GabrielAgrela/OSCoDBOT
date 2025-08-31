@@ -10,6 +10,7 @@ import numpy as np
 from bot.core.image import load_template_bgr, match_template, pct_region_to_pixels
 from bot.core.state_machine import Action, Context, MatchResult
 from bot.core.window import bring_to_front, click_screen_xy
+from bot.core import logs
 
 # ANSI colors for Windows 10+ terminals; ignored if unsupported
 GREEN = "\033[92m"
@@ -53,10 +54,15 @@ class FindAndClick(Action):
             if tpl is None:
                 continue
             found, top_left_xy, score = match_template(ctx.frame_bgr, tpl, self.threshold, roi_xywh)
+            msg = f"[FindAndClick] tpl={fname} score={score:.3f} found={found}"
+            # Console color (best-effort) and UI log
             try:
-                msg = f"[FindAndClick] tpl={fname} score={score:.3f} found={found}"
                 color = GREEN if found else RED
                 print(f"{color}{msg}{RESET}")
+            except Exception:
+                pass
+            try:
+                logs.add(msg, level="ok" if found else "err")
             except Exception:
                 pass
             if not found:

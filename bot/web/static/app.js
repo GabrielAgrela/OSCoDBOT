@@ -1,4 +1,5 @@
 let running = false;
+let lastLogId = 0;
 
 function getSelection() {
   const checks = Array.from(document.querySelectorAll('.mode-check'));
@@ -34,6 +35,42 @@ async function status() {
   }
 }
 
+function renderLogs(items) {
+  if (!items || !items.length) return;
+  const box = document.getElementById('log');
+  const atBottom = Math.abs(box.scrollHeight - box.scrollTop - box.clientHeight) < 4;
+  const frag = document.createDocumentFragment();
+  for (const it of items) {
+    const div = document.createElement('div');
+    div.className = 'log-line ' + (it.level || 'info');
+    const t = new Date((it.ts || 0) * 1000);
+    const hh = String(t.getHours()).padStart(2,'0');
+    const mm = String(t.getMinutes()).padStart(2,'0');
+    const ss = String(t.getSeconds()).padStart(2,'0');
+    div.textContent = `[${hh}:${mm}:${ss}] ${it.text}`;
+    frag.appendChild(div);
+    if (it.id && it.id > lastLogId) lastLogId = it.id;
+  }
+  box.appendChild(frag);
+  // Trim overly long logs in DOM
+  const maxLines = 300;
+  while (box.childElementCount > maxLines) {
+    box.removeChild(box.firstElementChild);
+  }
+  if (atBottom) box.scrollTop = box.scrollHeight;
+}
+
+async function fetchLogs() {
+  try {
+    const res = await fetch(`/api/logs?since=${lastLogId}`);
+    if (!res.ok) return;
+    const data = await res.json();
+    renderLogs(data.logs || []);
+  } catch (e) {
+    // ignore
+  }
+}
+
 async function start() {
   const startBtn = document.getElementById('start');
   const selection = getSelection();
@@ -64,4 +101,6 @@ window.addEventListener('DOMContentLoaded', () => {
   updateControls();
   status();
   setInterval(status, 1500);
+  fetchLogs();
+  setInterval(fetchLogs, 1000);
 });

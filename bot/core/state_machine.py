@@ -8,6 +8,7 @@ from typing import Optional, Protocol, Sequence, Dict, List
 
 import numpy as np
 from .window import bring_to_front, find_window_by_title_substr
+from . import logs
 
 
 @dataclass
@@ -81,8 +82,15 @@ class SequenceState:
                     pass
                 _ = action.run(ctx)
             except Exception as exc:
-                # Keep loop resilient; log to console and continue
-                print(f"[ActionError] {action.name}: {exc}")
+                # Keep loop resilient; log to console/UI and continue
+                try:
+                    print(f"[ActionError] {action.name}: {exc}")
+                except Exception:
+                    pass
+                try:
+                    logs.add(f"[ActionError] {action.name}: {exc}", level="err")
+                except Exception:
+                    pass
         # small pacing sleep between cycles to avoid CPU spin
         if self._loop_sleep_s > 0:
             end_by = time.time() + self._loop_sleep_s
@@ -165,7 +173,14 @@ class GraphState:
                 if res is not None:
                     last_result = res
             except Exception as exc:
-                print(f"[ActionError] {action.name} in step {step.name}: {exc}")
+                try:
+                    print(f"[ActionError] {action.name} in step {step.name}: {exc}")
+                except Exception:
+                    pass
+                try:
+                    logs.add(f"[ActionError] {action.name} in step {step.name}: {exc}", level="err")
+                except Exception:
+                    pass
         # Transition
         success = bool(last_result)
         next_name: Optional[str] = step.on_success if success else step.on_failure
