@@ -98,7 +98,7 @@ def run_app() -> None:
                 "Call of the Dragons Bot",
                 url,
                 width=200,
-                height=450,
+                height=400,
                 resizable=False,
                 on_top=True,
                 frameless=True,
