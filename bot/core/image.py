@@ -14,9 +14,36 @@ def to_gray(img_bgr: np.ndarray) -> np.ndarray:
 
 @lru_cache(maxsize=64)
 def load_template_bgr(path: str) -> np.ndarray:
-    img = cv2.imread(path, cv2.IMREAD_COLOR)
+    """Load a template image as BGR, trimming transparent borders if present.
+
+    If the image has an alpha channel (e.g., PNG with transparency), we detect
+    non-transparent pixels (alpha > 10) and crop to the minimal bounding box.
+    This improves match quality for icons with transparent backgrounds
+    without changing matching logic elsewhere.
+    """
+    img = cv2.imread(path, cv2.IMREAD_UNCHANGED)
     if img is None:
         raise FileNotFoundError(f"Template image not found: {path}")
+
+    # If 4-channel (BGRA), trim transparent margins and return BGR
+    if img.ndim == 3 and img.shape[2] == 4:
+        bgr = img[:, :, :3]
+        alpha = img[:, :, 3]
+        # Threshold alpha to build a binary mask of visible pixels
+        # Using a small threshold to ignore semi-transparent edge noise
+        _, mask = cv2.threshold(alpha, 10, 255, cv2.THRESH_BINARY)
+        pts = cv2.findNonZero(mask)
+        if pts is not None:
+            x, y, w, h = cv2.boundingRect(pts)
+            # Guard against degenerate boxes
+            if w > 0 and h > 0:
+                return bgr[y : y + h, x : x + w]
+        # Fallback: no visible pixels found; return BGR without alpha
+        return bgr
+
+    # Already BGR or grayscale; ensure BGR
+    if img.ndim == 2:
+        return cv2.cvtColor(img, cv2.COLOR_GRAY2BGR)
     return img
 
 
@@ -56,4 +83,3 @@ def match_template(
         # Location within ROI (top-left)
         return True, (rx + max_loc[0], ry + max_loc[1]), float(max_val)
     return False, (0, 0), float(max_val)
-
