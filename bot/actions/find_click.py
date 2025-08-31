@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import time
+from datetime import datetime
 from dataclasses import dataclass
 from pathlib import Path
 from typing import List, Optional, Sequence, Tuple
@@ -48,6 +49,29 @@ class FindAndClick(Action):
             return False
         left, top, width, height = ctx.window_rect
         roi_xywh = pct_region_to_pixels((width, height), self.region_pct)
+
+        # Debug: save only the ROI region if enabled
+        if getattr(ctx, "save_shots", False):
+            try:
+                rx, ry, rw, rh = roi_xywh
+                if rw > 0 and rh > 0:
+                    roi = ctx.frame_bgr[ry : ry + rh, rx : rx + rw]
+                    out_dir = getattr(ctx, "shots_dir", Path("debug_captures"))
+                    out_dir.mkdir(parents=True, exist_ok=True)
+                    ts = datetime.now().strftime("%Y%m%d-%H%M%S-%f")
+                    out_path = out_dir / f"{ts}_ROI_{self.name}.png"
+                    try:
+                        import cv2  # type: ignore
+                        cv2.imwrite(str(out_path), roi)
+                    except Exception:
+                        try:
+                            from PIL import Image  # type: ignore
+                            Image.fromarray(roi[:, :, ::-1]).save(str(out_path))
+                        except Exception:
+                            pass
+            except Exception:
+                # Swallow any debug-save errors silently
+                pass
 
         for fname in self.templates:
             tpl = self._load(ctx.templates_dir, fname)

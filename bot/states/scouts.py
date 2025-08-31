@@ -17,11 +17,12 @@ def build_scouts_state(cfg: AppConfig) -> tuple[State, Context]:
         GraphStep(
             name="ScoutIdle",
             actions=[
+                Wait(name="wait_before_screenshot", seconds=2.0),
                 Screenshot(name="scout_cap_1"),
                 FindAndClick(
                     name="ScoutIdle",
                     templates=["ScoutIdle.png"],
-                    region_pct=cfg.side_region_pct,
+                    region_pct=cfg.units_overview_region_pct,
                     threshold=0.94,
                 ),
             ],

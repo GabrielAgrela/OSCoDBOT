@@ -106,7 +106,7 @@ def build_farm_ore_state(cfg: AppConfig) -> tuple[State, Context]:
                 Wait(name="wait_after_gather", seconds=1.0),
             ],
             on_success="CreateLegionsButton",
-            on_failure="TapCenterThenGather",
+            on_failure="EndNoLegions",
         ),
         GraphStep(
             name="TapCenterThenGather",

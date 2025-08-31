@@ -8,6 +8,7 @@ import random
 import win32api
 import win32con
 import win32gui
+from bot.config import DEFAULT_CONFIG
 
 
 @dataclass
@@ -87,17 +88,24 @@ def click_screen_xy(x: int, y: int) -> None:
         rx = x + dx
         ry = y + dy
         try:
-            sw = win32api.GetSystemMetrics(0)
-            sh = win32api.GetSystemMetrics(1)
-            rx = max(0, min(rx, max(0, sw - 1)))
-            ry = max(0, min(ry, max(0, sh - 1)))
+            # Clamp to the entire virtual desktop (all monitors), not just primary
+            # SM_XVIRTUALSCREEN(76), SM_YVIRTUALSCREEN(77), SM_CXVIRTUALSCREEN(78), SM_CYVIRTUALSCREEN(79)
+            vx = win32api.GetSystemMetrics(76)
+            vy = win32api.GetSystemMetrics(77)
+            vw = win32api.GetSystemMetrics(78)
+            vh = win32api.GetSystemMetrics(79)
+            max_x = vx + max(0, vw - 1)
+            max_y = vy + max(0, vh - 1)
+            rx = max(vx, min(rx, max_x))
+            ry = max(vy, min(ry, max_y))
         except Exception:
             pass
         win32api.SetCursorPos((rx, ry))
         win32api.mouse_event(win32con.MOUSEEVENTF_LEFTDOWN, 0, 0, 0, 0)
         win32api.mouse_event(win32con.MOUSEEVENTF_LEFTUP, 0, 0, 0, 0)
     finally:
-        if prev_pos is not None:
+        # Optionally restore the cursor to its previous position
+        if DEFAULT_CONFIG.click_snap_back and prev_pos is not None:
             try:
                 win32api.SetCursorPos(prev_pos)
             except Exception:
