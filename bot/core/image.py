@@ -17,10 +17,13 @@ def to_gray(img_bgr: np.ndarray) -> np.ndarray:
 def load_template_bgr_mask(path: str) -> Tuple[np.ndarray, Optional[np.ndarray]]:
     """Load a template as BGR plus an optional mask derived from alpha.
 
-    - If the image has an alpha channel, trim fully-transparent borders and
-      return both the cropped BGR image and a binary mask (uint8) of the
-      visible area (alpha > 10).
-    - If no alpha, return BGR and mask=None.
+    Goals:
+      - Crop transparent borders
+      - Use a "strict" mask that ignores semi-transparent edge pixels to reduce
+        background-dependent blending artifacts when matching over varied scenes.
+
+    Returns:
+      (bgr_cropped, mask_strict | None)
     """
     img = cv2.imread(path, cv2.IMREAD_UNCHANGED)
     if img is None:
@@ -29,15 +32,36 @@ def load_template_bgr_mask(path: str) -> Tuple[np.ndarray, Optional[np.ndarray]]
     if img.ndim == 3 and img.shape[2] == 4:
         bgr = img[:, :, :3]
         alpha = img[:, :, 3]
-        # Threshold alpha to build a binary mask of visible pixels
-        _, mask = cv2.threshold(alpha, 10, 255, cv2.THRESH_BINARY)
-        pts = cv2.findNonZero(mask)
-        if pts is not None:
-            x, y, w, h = cv2.boundingRect(pts)
-            if w > 0 and h > 0:
-                return bgr[y : y + h, x : x + w], mask[y : y + h, x : x + w]
-        # Fallback: no visible pixels; return BGR without mask
-        return bgr, None
+        # Mask used only to compute the bounding rect (very forgiving)
+        _, mask_any = cv2.threshold(alpha, 10, 255, cv2.THRESH_BINARY)
+        pts = cv2.findNonZero(mask_any)
+        if pts is None:
+            return bgr, None
+        x, y, w, h = cv2.boundingRect(pts)
+        if w <= 0 or h <= 0:
+            return bgr, None
+        # Crop to content
+        bgr_c = bgr[y : y + h, x : x + w]
+        alpha_c = alpha[y : y + h, x : x + w]
+        # Build a strict mask that ignores soft/anti-aliased edges which vary with background
+        # Use high alpha threshold then lightly erode to remove edge ring
+        _, mask_strict = cv2.threshold(alpha_c, 200, 255, cv2.THRESH_BINARY)
+        try:
+            kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (3, 3))
+        except Exception:
+            kernel = np.ones((3, 3), np.uint8)
+        mask_eroded = cv2.erode(mask_strict, kernel, iterations=1)
+        # If erosion removed almost everything, fall back to the strict mask without erosion
+        if cv2.countNonZero(mask_eroded) < max(16, int(0.01 * mask_strict.size)):
+            mask_final = mask_strict
+        else:
+            mask_final = mask_eroded
+        return bgr_c, mask_final
+    # Grayscale -> BGR
+    if img.ndim == 2:
+        return cv2.cvtColor(img, cv2.COLOR_GRAY2BGR), None
+    # Already BGR
+    return img, None
     # Grayscale -> BGR
     if img.ndim == 2:
         return cv2.cvtColor(img, cv2.COLOR_GRAY2BGR), None
@@ -82,15 +106,21 @@ def match_template(
     if roi.shape[0] < th or roi.shape[1] < tw:
         return False, (0, 0), 0.0
 
-    # If we have a mask (from alpha), use a method that supports masking
+    # If we have a mask (from alpha), use a grayscale correlation with mask.
+    # Grayscale reduces sensitivity to color shifts from background bleed-through.
     if mask is not None:
         try:
-            res = cv2.matchTemplate(roi, template_bgr, cv2.TM_CCORR_NORMED, mask=mask)
-        except Exception:
-            # Fallback to grayscale without mask if OpenCV lacks mask support
             roi_g = to_gray(roi)
             tpl_g = to_gray(template_bgr)
-            res = cv2.matchTemplate(roi_g, tpl_g, cv2.TM_CCOEFF_NORMED)
+            res = cv2.matchTemplate(roi_g, tpl_g, cv2.TM_CCORR_NORMED, mask=mask)
+        except Exception:
+            # Fallbacks: try BGR with mask; otherwise grayscale without mask
+            try:
+                res = cv2.matchTemplate(roi, template_bgr, cv2.TM_CCORR_NORMED, mask=mask)
+            except Exception:
+                roi_g = to_gray(roi)
+                tpl_g = to_gray(template_bgr)
+                res = cv2.matchTemplate(roi_g, tpl_g, cv2.TM_CCOEFF_NORMED)
     else:
         roi_g = to_gray(roi)
         tpl_g = to_gray(template_bgr)
