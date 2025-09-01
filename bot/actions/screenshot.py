@@ -109,21 +109,5 @@ class Screenshot(Action):
         frame_bgr = raw[:, :, :3]
         ctx.frame_bgr = frame_bgr
         ctx.window_rect = rect.to_tuple()
-        # Save debug shot if enabled in context
-        if getattr(ctx, "save_shots", False):
-            try:
-                out_dir = getattr(ctx, "shots_dir", Path("debug_captures"))
-                out_dir.mkdir(parents=True, exist_ok=True)
-                ts = datetime.now().strftime("%Y%m%d-%H%M%S-%f")
-                out_path = out_dir / f"{ts}.png"
-                try:
-                    import cv2  # type: ignore
-                    cv2.imwrite(str(out_path), frame_bgr)
-                except Exception:
-                    try:
-                        from PIL import Image  # type: ignore
-                        Image.fromarray(frame_bgr[:, :, ::-1]).save(str(out_path))
-                    except Exception:
-                        pass
-            except Exception:
-                pass
+        # Intentionally do not save raw screenshots here to avoid disk spam.
+        # Use debug saves in matcher actions when an object is actually found.

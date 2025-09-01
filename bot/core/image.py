@@ -2,6 +2,8 @@ from __future__ import annotations
 
 from functools import lru_cache
 from typing import Tuple, Optional
+from datetime import datetime
+from pathlib import Path
 
 import cv2
 import numpy as np
@@ -94,8 +96,61 @@ def match_template(
         tpl_g = to_gray(template_bgr)
         res = cv2.matchTemplate(roi_g, tpl_g, cv2.TM_CCOEFF_NORMED)
     min_val, max_val, min_loc, max_loc = cv2.minMaxLoc(res)
+    # Best match position in full-frame coords
+    best_top_left = (rx + max_loc[0], ry + max_loc[1])
     if max_val >= threshold:
-        # Location within ROI (top-left)
-        return True, (rx + max_loc[0], ry + max_loc[1]), float(max_val)
-    return False, (0, 0), float(max_val)
+        return True, best_top_left, float(max_val)
+    return False, best_top_left, float(max_val)
 
+
+def save_debug_match(
+    frame_bgr: np.ndarray,
+    roi_xywh: tuple[int, int, int, int],
+    template_bgr: np.ndarray,
+    top_left_xy: tuple[int, int],
+    score: float,
+    out_dir: Path,
+    tag: str,
+) -> None:
+    """Save annotated frame and template for a single match attempt.
+
+    Files written (best effort):
+      - <ts>_match_<tag>_<score>.png  (frame with ROI rectangle and match rectangle)
+      - <ts>_tpl_<tag>.png            (template image)
+    """
+    try:
+        import cv2  # type: ignore
+    except Exception:
+        return
+    try:
+        out_dir.mkdir(parents=True, exist_ok=True)
+    except Exception:
+        pass
+    ts = datetime.now().strftime("%Y%m%d-%H%M%S-%f")
+    # Annotate frame
+    try:
+        rx, ry, rw, rh = roi_xywh
+        x0, y0 = max(0, rx), max(0, ry)
+        x1, y1 = max(0, min(frame_bgr.shape[1] - 1, rx + rw)), max(0, min(frame_bgr.shape[0] - 1, ry + rh))
+        vis = frame_bgr.copy()
+        # Draw ROI rectangle in yellow
+        cv2.rectangle(vis, (x0, y0), (x1, y1), (0, 255, 255), 2)
+        # Draw best-match rectangle in green
+        th, tw = template_bgr.shape[:2]
+        mx, my = top_left_xy
+        cv2.rectangle(vis, (mx, my), (mx + tw, my + th), (0, 255, 0), 2)
+        # Put score text
+        cv2.putText(vis, f"{score:.3f}", (mx, max(0, my - 5)), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 1, cv2.LINE_AA)
+        out_path = out_dir / f"{ts}_match_{tag}_{score:.3f}.png"
+        try:
+            cv2.imwrite(str(out_path), vis)
+        except Exception:
+            pass
+    except Exception:
+        pass
+    # Save template
+    try:
+        out_tpl = out_dir / f"{ts}_tpl_{tag}.png"
+        cv2.imwrite(str(out_tpl), template_bgr)
+    except Exception:
+        pass

@@ -8,7 +8,7 @@ from typing import List, Optional, Sequence, Tuple
 
 import numpy as np
 
-from bot.core.image import load_template_bgr_mask, match_template, pct_region_to_pixels
+from bot.core.image import load_template_bgr_mask, match_template, pct_region_to_pixels, save_debug_match
 from bot.core.state_machine import Action, Context, MatchResult
 from bot.core.window import bring_to_front, click_screen_xy
 from bot.core import logs
@@ -50,29 +50,6 @@ class FindAndClick(Action):
         left, top, width, height = ctx.window_rect
         roi_xywh = pct_region_to_pixels((width, height), self.region_pct)
 
-        # Debug: save only the ROI region if enabled
-        if getattr(ctx, "save_shots", False):
-            try:
-                rx, ry, rw, rh = roi_xywh
-                if rw > 0 and rh > 0:
-                    roi = ctx.frame_bgr[ry : ry + rh, rx : rx + rw]
-                    out_dir = getattr(ctx, "shots_dir", Path("debug_captures"))
-                    out_dir.mkdir(parents=True, exist_ok=True)
-                    ts = datetime.now().strftime("%Y%m%d-%H%M%S-%f")
-                    out_path = out_dir / f"{ts}_ROI_{self.name}.png"
-                    try:
-                        import cv2  # type: ignore
-                        cv2.imwrite(str(out_path), roi)
-                    except Exception:
-                        try:
-                            from PIL import Image  # type: ignore
-                            Image.fromarray(roi[:, :, ::-1]).save(str(out_path))
-                        except Exception:
-                            pass
-            except Exception:
-                # Swallow any debug-save errors silently
-                pass
-
         for fname in self.templates:
             tpl_pair = self._load(ctx.templates_dir, fname)
             if tpl_pair is None:
@@ -110,5 +87,13 @@ class FindAndClick(Action):
                 bring_to_front(ctx.hwnd)
                 time.sleep(0.05)
             click_screen_xy(screen_x, screen_y)
+            # Save debug annotated images only when found
+            if getattr(ctx, "save_shots", False):
+                try:
+                    out_dir = getattr(ctx, "shots_dir", Path("debug_captures"))
+                    tag = f"{self.name}_{Path(fname).stem}"
+                    save_debug_match(ctx.frame_bgr, roi_xywh, tpl, top_left_xy, score, out_dir, tag)
+                except Exception:
+                    pass
             return True
         return False

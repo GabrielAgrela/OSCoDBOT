@@ -6,7 +6,7 @@ from typing import Optional, Sequence
 import numpy as np
 
 from bot.core.state_machine import Action, Context
-from bot.core.image import load_template_bgr_mask, match_template, pct_region_to_pixels
+from bot.core.image import load_template_bgr_mask, match_template, pct_region_to_pixels, save_debug_match
 from bot.core import logs
 
 
@@ -46,11 +46,21 @@ class CheckTemplate(Action):
             if tpl_pair is None:
                 continue
             tpl, mask = tpl_pair
-            found, top_left_xy, score = match_template(ctx.frame_bgr, tpl, self.threshold, (rx, ry, rw, rh), mask=mask)
+            roi = (rx, ry, rw, rh)
+            found, top_left_xy, score = match_template(ctx.frame_bgr, tpl, self.threshold, roi, mask=mask)
             try:
                 logs.add(f"[CheckTemplate] tpl={fname} score={score:.3f} found={found}", level="ok" if found else "info")
             except Exception:
                 pass
             if found:
+                # Save debug annotated images only when found
+                if getattr(ctx, "save_shots", False):
+                    try:
+                        from pathlib import Path as _Path
+                        out_dir = getattr(ctx, "shots_dir", _Path("debug_captures"))
+                        tag = f"{self.name}_{_Path(fname).stem}"
+                        save_debug_match(ctx.frame_bgr, roi, tpl, top_left_xy, score, out_dir, tag)
+                    except Exception:
+                        pass
                 return True
         return False

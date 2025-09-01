@@ -14,6 +14,7 @@ from bot.actions import (
     CheckTemplate,
     CooldownGate,
     SetCooldown,
+    Retry,
 )
 
 
@@ -120,14 +121,20 @@ def build_farm_state(cfg: AppConfig, spec: FarmSpec) -> tuple[State, Context]:
         GraphStep(
             name="SearchFarmButton",
             actions=[
-                Screenshot(name=f"{key}_cap_search_1"),
-                FindAndClick(
-                    name="SearchFarmButton",
-                    templates=["SearchFarmButton.png"],
-                    region_pct=(0.0, 0.0, 1.0, 1.0),
-                    threshold=cfg.match_threshold,
-                ),
-                Wait(name="wait_after_search", seconds=2.0),
+                Retry(
+                    name="SearchFarmButtonRetry",
+                    attempts=3,
+                    actions=[
+                        Screenshot(name=f"{key}_cap_search_1"),
+                        FindAndClick(
+                            name="SearchFarmButton",
+                            templates=["SearchFarmButton.png"],
+                            region_pct=(0.0, 0.0, 1.0, 1.0),
+                            threshold=cfg.match_threshold,
+                        ),
+                        Wait(name="wait_after_search", seconds=2.0),
+                    ],
+                )
             ],
             on_success="GatherButton",
             on_failure="EndNoLegions",
@@ -173,6 +180,7 @@ def build_farm_state(cfg: AppConfig, spec: FarmSpec) -> tuple[State, Context]:
             name="TapCenterThenGather",
             actions=[
                 ClickPercent(name="tap_center", x_pct=0.5, y_pct=0.5),
+                Wait(name="wait_after_tap_center", seconds=1.0),
                 Screenshot(name=f"{key}_cap_gather_retry"),
                 FindAndClick(
                     name="GatherButtonRetry",
