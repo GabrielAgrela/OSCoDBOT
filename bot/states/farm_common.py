@@ -190,7 +190,7 @@ def build_farm_state(cfg: AppConfig, spec: FarmSpec) -> tuple[State, Context]:
                 ),
                 Wait(name="wait_after_gather_retry", seconds=spec.wait_after_gather_retry_s),
             ],
-            on_success="CreateLegionsButton",
+            on_success="CheckMarchFull",
             on_failure="EndNoLegions",
         ),
         GraphStep(

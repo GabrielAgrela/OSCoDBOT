@@ -8,7 +8,13 @@ from typing import List, Optional, Sequence, Tuple
 
 import numpy as np
 
-from bot.core.image import load_template_bgr_mask, match_template, pct_region_to_pixels, save_debug_match
+from bot.core.image import (
+    load_template_bgr_mask,
+    match_template,
+    pct_region_to_pixels,
+    save_debug_match,
+    masked_zncc,
+)
 from bot.core.state_machine import Action, Context, MatchResult
 from bot.core.window import bring_to_front, click_screen_xy
 from bot.core import logs
@@ -56,7 +62,33 @@ class FindAndClick(Action):
                 continue
             tpl, tpl_mask = tpl_pair
             found, top_left_xy, score = match_template(ctx.frame_bgr, tpl, self.threshold, roi_xywh, mask=tpl_mask)
-            msg = f"[FindAndClick] tpl={fname} score={score:.3f} found={found}"
+            # Secondary verification using masked ZNCC at the proposed location
+            vscore = 0.0
+            if found:
+                try:
+                    mx, my = top_left_xy
+                    th, tw = tpl.shape[:2]
+                    patch = ctx.frame_bgr[my : my + th, mx : mx + tw]
+                    if patch.shape[:2] == (th, tw):
+                        vscore = masked_zncc(patch, tpl, tpl_mask)
+                except Exception:
+                    vscore = 0.0
+                # Require verification score to exceed a stricter minimum
+                VERIFY_MIN = self.threshold
+                if vscore < VERIFY_MIN:
+                    try:
+                        logs.add(
+                            f"[VerifyFail] tpl={fname} score={score:.3f} v={vscore:.3f} min={VERIFY_MIN:.2f}",
+                            level="err",
+                        )
+                    except Exception:
+                        pass
+                    found = False
+            msg = (
+                f"[FindAndClick] tpl={fname} score={score:.3f}"
+                + (f" v={vscore:.3f}" if vscore > 0 else "")
+                + f" found={found}"
+            )
             # Console color (best-effort) and UI log
             try:
                 color = GREEN if found else RED
@@ -92,7 +124,7 @@ class FindAndClick(Action):
                 try:
                     out_dir = getattr(ctx, "shots_dir", Path("debug_captures"))
                     tag = f"{self.name}_{Path(fname).stem}"
-                    save_debug_match(ctx.frame_bgr, roi_xywh, tpl, top_left_xy, score, out_dir, tag)
+                    save_debug_match(ctx.frame_bgr, roi_xywh, tpl, top_left_xy, vscore or score, out_dir, tag)
                 except Exception:
                     pass
             return True

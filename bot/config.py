@@ -13,7 +13,7 @@ class AppConfig:
 
     # Capture and matching
     screenshot_period_s: float = 0.7
-    match_threshold: float = 0.9
+    match_threshold: float = 0.85
 
     # Default side region where the first image is searched (x, y, w, h in 0..1)
     units_overview_region_pct: tuple[float, float, float, float] = (0.9, 0.15, 0.1, 0.6)  # right 20%
@@ -107,7 +107,7 @@ def make_config() -> AppConfig:
     window_title = os.getenv("WINDOW_TITLE_SUBSTR", "Call of Dragons")
     left_pct = _env_float("UI_MARGIN_LEFT_PCT", 0.004)
     top_pct = _env_float("UI_MARGIN_TOP_PCT", 0.56)
-    match_threshold = _env_float("MATCH_THRESHOLD", 0.9)
+    match_threshold = _env_float("MATCH_THRESHOLD", 0.85)
     click_snap_back = _env_bool("CLICK_SNAP_BACK", True)
     save_shots = _env_bool("SAVE_SHOTS", False)
     shots_dir_env = os.getenv("SHOTS_DIR", "").strip()

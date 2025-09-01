@@ -6,7 +6,13 @@ from typing import Optional, Sequence
 import numpy as np
 
 from bot.core.state_machine import Action, Context
-from bot.core.image import load_template_bgr_mask, match_template, pct_region_to_pixels, save_debug_match
+from bot.core.image import (
+    load_template_bgr_mask,
+    match_template,
+    pct_region_to_pixels,
+    save_debug_match,
+    masked_zncc,
+)
 from bot.core import logs
 
 
@@ -48,8 +54,22 @@ class CheckTemplate(Action):
             tpl, mask = tpl_pair
             roi = (rx, ry, rw, rh)
             found, top_left_xy, score = match_template(ctx.frame_bgr, tpl, self.threshold, roi, mask=mask)
+            vscore = 0.0
+            if found:
+                try:
+                    mx, my = top_left_xy
+                    th, tw = tpl.shape[:2]
+                    patch = ctx.frame_bgr[my : my + th, mx : mx + tw]
+                    if patch.shape[:2] == (th, tw):
+                        vscore = masked_zncc(patch, tpl, mask)
+                except Exception:
+                    vscore = 0.0
+                VERIFY_MIN = max(0.90, min(0.98, self.threshold)) if self.threshold >= 0.9 else 0.90
+                if vscore < VERIFY_MIN:
+                    found = False
             try:
-                logs.add(f"[CheckTemplate] tpl={fname} score={score:.3f} found={found}", level="ok" if found else "info")
+                extra = f" v={vscore:.3f}" if vscore > 0 else ""
+                logs.add(f"[CheckTemplate] tpl={fname} score={score:.3f}{extra} found={found}", level="ok" if found else "info")
             except Exception:
                 pass
             if found:
@@ -59,7 +79,7 @@ class CheckTemplate(Action):
                         from pathlib import Path as _Path
                         out_dir = getattr(ctx, "shots_dir", _Path("debug_captures"))
                         tag = f"{self.name}_{_Path(fname).stem}"
-                        save_debug_match(ctx.frame_bgr, roi, tpl, top_left_xy, score, out_dir, tag)
+                        save_debug_match(ctx.frame_bgr, roi, tpl, top_left_xy, vscore or score, out_dir, tag)
                     except Exception:
                         pass
                 return True

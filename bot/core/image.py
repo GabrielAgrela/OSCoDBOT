@@ -204,3 +204,52 @@ def _prune_dir_size(folder: Path, max_bytes: int) -> None:
                 break
     except Exception:
         pass
+
+
+def masked_zncc(patch_bgr: np.ndarray, template_bgr: np.ndarray, mask: Optional[np.ndarray] = None) -> float:
+    """Compute zero-mean normalized cross-correlation between patch and template.
+
+    - Converts to grayscale
+    - Applies binary mask if provided (non-zero means included)
+    - Returns value in [-1, 1]; higher is more similar
+    """
+    try:
+        import cv2  # type: ignore
+    except Exception:
+        return 0.0
+    if patch_bgr.shape[:2] != template_bgr.shape[:2]:
+        return 0.0
+    g_patch = cv2.cvtColor(patch_bgr, cv2.COLOR_BGR2GRAY)
+    g_tpl = cv2.cvtColor(template_bgr, cv2.COLOR_BGR2GRAY)
+    if mask is not None:
+        m = (mask > 0).astype(np.float32)
+        if np.count_nonzero(m) < 16:
+            return 0.0
+        p = g_patch.astype(np.float32) * m
+        t = g_tpl.astype(np.float32) * m
+        # Subtract masked means
+        w = float(np.count_nonzero(m))
+        mp = np.sum(p) / w
+        mt = np.sum(t) / w
+        p -= mp * m
+        t -= mt * m
+        num = float(np.sum(p * t))
+        den = float(np.sqrt(np.sum(p * p) * np.sum(t * t)))
+    else:
+        p = g_patch.astype(np.float32)
+        t = g_tpl.astype(np.float32)
+        mp = float(np.mean(p))
+        mt = float(np.mean(t))
+        p = p - mp
+        t = t - mt
+        num = float(np.sum(p * t))
+        den = float(np.sqrt(np.sum(p * p) * np.sum(t * t)))
+    if den <= 1e-6:
+        return 0.0
+    r = num / den
+    # Clamp numeric noise
+    if r > 1.0:
+        r = 1.0
+    if r < -1.0:
+        r = -1.0
+    return float(r)
