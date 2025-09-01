@@ -108,6 +108,7 @@ def make_config() -> AppConfig:
     left_pct = _env_float("UI_MARGIN_LEFT_PCT", 0.004)
     top_pct = _env_float("UI_MARGIN_TOP_PCT", 0.56)
     match_threshold = _env_float("MATCH_THRESHOLD", 0.85)
+    verify_threshold = _env_float("VERIFY_THRESHOLD", 0.85)
     click_snap_back = _env_bool("CLICK_SNAP_BACK", True)
     save_shots = _env_bool("SAVE_SHOTS", False)
     shots_dir_env = os.getenv("SHOTS_DIR", "").strip()

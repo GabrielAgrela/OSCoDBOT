@@ -75,6 +75,9 @@ class FindAndClick(Action):
                     vscore = 0.0
                 # Require verification score to exceed a stricter minimum
                 VERIFY_MIN = self.threshold
+                #if vscore is less than the verify threshold, set it to the threshold
+                if vscore < 0.85:
+                    found = False
                 if vscore < VERIFY_MIN:
                     try:
                         logs.add(
