@@ -42,6 +42,11 @@ class AppConfig:
     ui_topmost: bool = True           # Keep UI always on top
     ui_frameless: bool = True         # Try to remove title bar/borders
 
+    # Game window sizing (client area)
+    # When >0, attempt to resize the target window's CLIENT area to this size
+    force_window_width: int = 1765
+    force_window_height: int = 993
+
     # Logging
     log_to_file: bool = True
     log_file: Path = Path("bot.log")
@@ -121,6 +126,14 @@ def make_config() -> AppConfig:
     ui_pin_to_game = _env_bool("UI_PIN_TO_GAME", True)
     ui_topmost = _env_bool("UI_TOPMOST", True)
     ui_frameless = _env_bool("UI_FRAMELESS", True)
+    try:
+        force_window_width = int(os.getenv("FORCE_WINDOW_WIDTH", "1765").strip())
+    except Exception:
+        force_window_width = 1765
+    try:
+        force_window_height = int(os.getenv("FORCE_WINDOW_HEIGHT", "993").strip())
+    except Exception:
+        force_window_height = 993
     log_to_file = _env_bool("LOG_TO_FILE", True)
     log_file_env = os.getenv("LOG_FILE", "").strip()
     log_file = Path(log_file_env) if log_file_env else Path("bot.log")
@@ -146,6 +159,8 @@ def make_config() -> AppConfig:
         ui_pin_to_game=ui_pin_to_game,
         ui_topmost=ui_topmost,
         ui_frameless=ui_frameless,
+        force_window_width=force_window_width,
+        force_window_height=force_window_height,
         log_to_file=log_to_file,
         log_file=log_file,
         log_max_bytes=log_max_bytes,

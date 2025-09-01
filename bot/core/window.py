@@ -125,6 +125,39 @@ def enable_dpi_awareness() -> None:
             pass
 
 
+def set_window_client_size(hwnd: int, client_width: int, client_height: int) -> None:
+    """Resize a window so that its CLIENT area becomes the given size.
+
+    - Restores the window if maximized/minimized
+    - Computes outer size via AdjustWindowRectEx based on current styles
+    - Keeps current position (no move)
+    """
+    try:
+        # Ensure window is in a normal state to allow resizing
+        try:
+            if win32gui.IsIconic(hwnd) or win32gui.IsZoomed(hwnd):
+                win32gui.ShowWindow(hwnd, win32con.SW_RESTORE)
+        except Exception:
+            pass
+        # Query styles
+        style = win32gui.GetWindowLong(hwnd, win32con.GWL_STYLE)
+        ex_style = win32gui.GetWindowLong(hwnd, win32con.GWL_EXSTYLE)
+        # Prepare RECT for desired client size
+        class RECT(ctypes.Structure):
+            _fields_ = [("left", ctypes.c_long), ("top", ctypes.c_long), ("right", ctypes.c_long), ("bottom", ctypes.c_long)]
+        rect = RECT(0, 0, int(client_width), int(client_height))
+        user32 = ctypes.windll.user32
+        # Best effort: assume no menu
+        user32.AdjustWindowRectEx(ctypes.byref(rect), style, False, ex_style)
+        outer_w = max(0, rect.right - rect.left)
+        outer_h = max(0, rect.bottom - rect.top)
+        flags = win32con.SWP_NOMOVE | win32con.SWP_NOZORDER | win32con.SWP_NOACTIVATE
+        win32gui.SetWindowPos(hwnd, 0, 0, 0, int(outer_w), int(outer_h), flags)
+    except Exception:
+        # Ignore failures; some windows (e.g., UWP or restricted) may not resize
+        pass
+
+
 def set_window_topmost(hwnd: int, topmost: bool = True) -> None:
     """Set or clear the always-on-top flag for a window.
 

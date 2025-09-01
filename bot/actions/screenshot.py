@@ -9,7 +9,8 @@ import mss
 import numpy as np
 
 from bot.core.state_machine import Action, Context
-from bot.core.window import find_window_by_title_substr, get_client_rect_screen
+from bot.core.window import find_window_by_title_substr, get_client_rect_screen, set_window_client_size
+from bot.config import DEFAULT_CONFIG
 
 
 @dataclass
@@ -27,7 +28,24 @@ class Screenshot(Action):
                 return  # window not found yet
             ctx.hwnd = hwnd
 
-        rect = get_client_rect_screen(hwnd)
+        # Try to enforce desired client size once per grab if configured
+        try:
+            target_w = int(getattr(DEFAULT_CONFIG, 'force_window_width', 0))
+            target_h = int(getattr(DEFAULT_CONFIG, 'force_window_height', 0))
+        except Exception:
+            target_w = target_h = 0
+        if target_w > 0 and target_h > 0:
+            try:
+                rect_now = get_client_rect_screen(hwnd)
+                if rect_now.width != target_w or rect_now.height != target_h:
+                    set_window_client_size(hwnd, target_w, target_h)
+                    # Re-read rect after resize
+                    rect_now = get_client_rect_screen(hwnd)
+                rect = rect_now
+            except Exception:
+                rect = get_client_rect_screen(hwnd)
+        else:
+            rect = get_client_rect_screen(hwnd)
         if rect.width <= 0 or rect.height <= 0:
             return
 
