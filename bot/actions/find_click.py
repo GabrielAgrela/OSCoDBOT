@@ -100,6 +100,13 @@ class FindAndClick(Action):
             except Exception:
                 pass
             if not found:
+                if getattr(ctx, "save_shots", False):
+                    try:
+                        out_dir = getattr(ctx, "shots_dir", Path("debug_captures"))
+                        tag = f"{self.name}_{Path(fname).stem}"
+                        save_debug_match(ctx.frame_bgr, roi_xywh, tpl, top_left_xy, score, out_dir, tag)
+                    except Exception:
+                        pass
                 continue
 
             tpl_h, tpl_w = tpl.shape[:2]
@@ -119,7 +126,6 @@ class FindAndClick(Action):
                 bring_to_front(ctx.hwnd)
                 time.sleep(0.05)
             click_screen_xy(screen_x, screen_y)
-            # Save debug annotated images only when found
             if getattr(ctx, "save_shots", False):
                 try:
                     out_dir = getattr(ctx, "shots_dir", Path("debug_captures"))

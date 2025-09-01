@@ -73,7 +73,6 @@ class CheckTemplate(Action):
             except Exception:
                 pass
             if found:
-                # Save debug annotated images only when found
                 if getattr(ctx, "save_shots", False):
                     try:
                         from pathlib import Path as _Path
@@ -83,4 +82,13 @@ class CheckTemplate(Action):
                     except Exception:
                         pass
                 return True
+            else:
+                if getattr(ctx, "save_shots", False):
+                    try:
+                        from pathlib import Path as _Path
+                        out_dir = getattr(ctx, "shots_dir", _Path("debug_captures"))
+                        tag = f"{self.name}_{_Path(fname).stem}"
+                        save_debug_match(ctx.frame_bgr, roi, tpl, top_left_xy, score, out_dir, tag)
+                    except Exception:
+                        pass
         return False
