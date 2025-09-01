@@ -101,6 +101,28 @@ window.addEventListener('DOMContentLoaded', () => {
   updateControls();
   status();
   setInterval(status, 1500);
+  // Periodically fetch metrics to show window dimensions
+  metrics();
+  setInterval(metrics, 1500);
   fetchLogs();
   setInterval(fetchLogs, 1000);
 });
+
+async function metrics() {
+  try {
+    const res = await fetch('/api/metrics');
+    if (!res.ok) return;
+    const data = await res.json();
+    const el = document.getElementById('window-dims');
+    if (!el) return;
+    if (!data.running) { el.textContent = 'Window: n/a'; return; }
+    const win = data.metrics && data.metrics.window;
+    if (win && win.width > 0 && win.height > 0) {
+      el.textContent = `Window: ${win.width}x${win.height}`;
+    } else {
+      el.textContent = 'Window: n/a';
+    }
+  } catch (e) {
+    // ignore
+  }
+}

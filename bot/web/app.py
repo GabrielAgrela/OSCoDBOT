@@ -125,6 +125,12 @@ def api_metrics():
     except Exception:
         rss_mb = priv_mb = page_mb = 0.0
         handles = gdi = user = 0
+    # Window rect (left, top, width, height)
+    try:
+        wr = getattr(ctx, "window_rect", (0, 0, 0, 0))
+        w_left, w_top, w_width, w_height = int(wr[0]), int(wr[1]), int(wr[2]), int(wr[3])
+    except Exception:
+        w_left = w_top = w_width = w_height = 0
     data = {
         "running": True,
         "kind": _running.kind,
@@ -145,6 +151,13 @@ def api_metrics():
             "user_objects": user,
             "capture_ok": bool(getattr(ctx, '_mss', None) is not None),
             "capture_grabs": int(getattr(ctx, '_mss_grab_count', 0)),
+            "window": {
+                "left": w_left,
+                "top": w_top,
+                "width": w_width,
+                "height": w_height,
+                "title_substr": getattr(ctx, "window_title_substr", "") or "",
+            },
         }
     }
     return jsonify(data)
