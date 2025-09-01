@@ -179,6 +179,9 @@ class StateMachine:
 
     def _watchdog_loop(self, ctx: Context) -> None:
         last_log = 0.0
+        last_perf = 0.0
+        prev_cpu_proc_time = time.process_time()
+        prev_cpu_wall = time.time()
         while not self._watchdog_stop.is_set() and not ctx.stop_event.is_set():
             now = time.time()
             try:
@@ -190,6 +193,51 @@ class StateMachine:
                     cyc = int(getattr(ctx, "cycle_count", 0))
                     logs.add(f"[Watchdog] step={step} action={act} last_dur={dur:.2f}s since_progress={since:.1f}s cycles={cyc}")
                     last_log = now
+                # Periodic perf telemetry
+                if now - last_perf >= 30.0:
+                    try:
+                        from . import perf as _perf
+                        m = _perf.get_process_metrics()
+                    except Exception:
+                        m = {}
+                    # CPU percent based on process_time delta and wall time
+                    try:
+                        curr_proc = time.process_time()
+                        curr_wall = now
+                        used = max(0.0, curr_proc - prev_cpu_proc_time)
+                        wall = max(0.001, curr_wall - prev_cpu_wall)
+                        cores = max(1, int(getattr(__import__('os'), 'cpu_count')() or 1))
+                        cpu_pct = max(0.0, min(100.0, (used / wall) * 100.0 / cores))
+                        prev_cpu_proc_time = curr_proc
+                        prev_cpu_wall = curr_wall
+                    except Exception:
+                        cpu_pct = 0.0
+                    try:
+                        import threading as _th
+                        thr = len(list(_th.enumerate()))
+                    except Exception:
+                        thr = 0
+                    try:
+                        rss_mb = float(m.get('rss_bytes', 0)) / (1024 * 1024)
+                        priv_mb = float(m.get('private_bytes', 0)) / (1024 * 1024)
+                        page_mb = float(m.get('pagefile_bytes', 0)) / (1024 * 1024)
+                        handles = int(m.get('handle_count', 0))
+                        gdi = int(m.get('gdi_count', 0))
+                        user = int(m.get('user_count', 0))
+                        cap_ok = bool(getattr(ctx, '_mss', None) is not None)
+                        grab_count = int(getattr(ctx, '_mss_grab_count', 0))
+                        wr = getattr(ctx, 'window_rect', (0,0,0,0))
+                        logs.add(
+                            (
+                                f"[Perf] rss={rss_mb:.1f}MB priv={priv_mb:.1f}MB page={page_mb:.1f}MB "
+                                f"handles={handles} gdi={gdi} user={user} thr={thr} cpu={cpu_pct:.1f}% "
+                                f"cap={'1' if cap_ok else '0'} grabs={grab_count} win={wr}"
+                            ),
+                            level="info",
+                        )
+                    except Exception:
+                        pass
+                    last_perf = now
                 if since > 45.0:
                     # Proactively try to recover capture/window handles
                     try:

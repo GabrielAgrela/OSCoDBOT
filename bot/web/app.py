@@ -112,6 +112,19 @@ def api_metrics():
         since = max(0.0, now - float(getattr(ctx, "last_progress_ts", 0.0)))
     except Exception:
         since = 0.0
+    # Perf metrics (best-effort)
+    try:
+        from bot.core import perf as _perf
+        m = _perf.get_process_metrics()
+        rss_mb = float(m.get('rss_bytes', 0)) / (1024 * 1024)
+        priv_mb = float(m.get('private_bytes', 0)) / (1024 * 1024)
+        page_mb = float(m.get('pagefile_bytes', 0)) / (1024 * 1024)
+        handles = int(m.get('handle_count', 0))
+        gdi = int(m.get('gdi_count', 0))
+        user = int(m.get('user_count', 0))
+    except Exception:
+        rss_mb = priv_mb = page_mb = 0.0
+        handles = gdi = user = 0
     data = {
         "running": True,
         "kind": _running.kind,
@@ -124,6 +137,14 @@ def api_metrics():
             "last_action_duration_s": float(getattr(ctx, "last_action_duration_s", 0.0)),
             "cycle_count": int(getattr(ctx, "cycle_count", 0)),
             "since_last_progress_s": since,
+            "rss_mb": rss_mb,
+            "private_mb": priv_mb,
+            "pagefile_mb": page_mb,
+            "handles": handles,
+            "gdi_objects": gdi,
+            "user_objects": user,
+            "capture_ok": bool(getattr(ctx, '_mss', None) is not None),
+            "capture_grabs": int(getattr(ctx, '_mss_grab_count', 0)),
         }
     }
     return jsonify(data)

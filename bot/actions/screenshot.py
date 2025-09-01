@@ -38,8 +38,29 @@ class Screenshot(Action):
             "height": rect.height,
         }
         # Reuse a per-thread mss instance stored in context to avoid GDI leaks
+        # Periodically refresh the handle to prevent long‑running resource buildup on Windows.
         sct = getattr(ctx, "_mss", None)
-        if sct is None:
+        grab_count = int(getattr(ctx, "_mss_grab_count", 0))
+        # Refresh every N grabs as a stability guard (tunable; conservative default)
+        REFRESH_EVERY = 1200  # ~ every 20–30 minutes depending on loop cadence
+        need_refresh = (sct is not None) and (grab_count >= REFRESH_EVERY)
+        if sct is None or need_refresh:
+            # Dispose old handle if refreshing
+            if need_refresh:
+                try:
+                    sct.close()
+                except Exception:
+                    pass
+                try:
+                    setattr(ctx, "_mss", None)
+                except Exception:
+                    pass
+                try:
+                    from bot.core import logs as _logs
+                    _logs.add("[Screenshot] Refreshed capture handle after periodic threshold", level="info")
+                except Exception:
+                    pass
+                grab_count = 0
             try:
                 sct = mss.mss()
                 setattr(ctx, "_mss", sct)
@@ -47,6 +68,12 @@ class Screenshot(Action):
                 return
         try:
             raw = np.array(sct.grab(monitor))  # BGRA
+            # Bump grab counter
+            grab_count += 1
+            try:
+                setattr(ctx, "_mss_grab_count", grab_count)
+            except Exception:
+                pass
         except Exception as exc:
             try:
                 from bot.core import logs
@@ -55,9 +82,23 @@ class Screenshot(Action):
                 pass
             # On grab failure, try to recreate the mss handle once
             try:
+                # Dispose existing first (best effort)
+                try:
+                    sct.close()
+                except Exception:
+                    pass
+                try:
+                    setattr(ctx, "_mss", None)
+                except Exception:
+                    pass
                 sct = mss.mss()
                 setattr(ctx, "_mss", sct)
                 raw = np.array(sct.grab(monitor))
+                grab_count = 1
+                try:
+                    setattr(ctx, "_mss_grab_count", grab_count)
+                except Exception:
+                    pass
             except Exception as exc2:
                 try:
                     from bot.core import logs

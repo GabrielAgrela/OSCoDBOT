@@ -37,6 +37,7 @@ def _stick_left_loop(_window) -> None:
     margin_left_pct = DEFAULT_CONFIG.ui_margin_left_pct
     margin_top_pct = DEFAULT_CONFIG.ui_margin_top_pct
     title_substr = DEFAULT_CONFIG.window_title_substr
+    last_pos = (-9999, -9999)
     while True:
         try:
             hwnd = find_window_by_title_substr(title_substr)
@@ -48,13 +49,16 @@ def _stick_left_loop(_window) -> None:
                     # Move our UI window via Win32 to avoid backend thread-safety issues
                     ui_hwnd = find_window_by_title_substr("Call of the Dragons Bot")
                     if ui_hwnd:
-                        move_window_xy(ui_hwnd, x, y)
+                        # Only move when position changed to reduce churn
+                        if (x, y) != last_pos:
+                            move_window_xy(ui_hwnd, x, y)
+                            last_pos = (x, y)
                 except Exception:
                     # Ignore issues and retry next tick
                     pass
         except Exception:
             pass
-        time.sleep(0.5)
+        time.sleep(1.5)
 
 
 def _ensure_topmost_loop(title_substr: str) -> None:
@@ -69,7 +73,7 @@ def _ensure_topmost_loop(title_substr: str) -> None:
                     pass
         except Exception:
             pass
-        time.sleep(1.0)
+        time.sleep(5.0)
 
 
 def _frameless_loop(title_substr: str) -> None:
@@ -84,7 +88,7 @@ def _frameless_loop(title_substr: str) -> None:
                     pass
         except Exception:
             pass
-        time.sleep(1.0)
+        time.sleep(5.0)
 
 
 def run_app() -> None:
