@@ -154,3 +154,53 @@ def save_debug_match(
         cv2.imwrite(str(out_tpl), template_bgr)
     except Exception:
         pass
+    # Prune directory if over size budget (best-effort)
+    try:
+        # Read limit from config if available
+        try:
+            from bot.config import DEFAULT_CONFIG as _CFG  # type: ignore
+            max_bytes = int(getattr(_CFG, "shots_max_bytes", 1_073_741_824))
+        except Exception:
+            max_bytes = 1_073_741_824
+        _prune_dir_size(out_dir, max_bytes)
+    except Exception:
+        pass
+
+
+def _prune_dir_size(folder: Path, max_bytes: int) -> None:
+    try:
+        if not folder.exists():
+            return
+        # Collect files (ignore subdirs)
+        entries = []
+        total = 0
+        for p in folder.iterdir():
+            try:
+                if not p.is_file():
+                    continue
+                sz = p.stat().st_size
+                total += sz
+                entries.append((p, p.stat().st_mtime, sz))
+            except Exception:
+                continue
+        if total <= max_bytes:
+            return
+        # Oldest first
+        entries.sort(key=lambda t: t[1])
+        for p, _mt, sz in entries:
+            try:
+                p.unlink(missing_ok=True)  # type: ignore[call-arg]
+            except TypeError:
+                # Python <3.8
+                try:
+                    if p.exists():
+                        p.unlink()
+                except Exception:
+                    pass
+            except Exception:
+                pass
+            total -= sz
+            if total <= max_bytes:
+                break
+    except Exception:
+        pass

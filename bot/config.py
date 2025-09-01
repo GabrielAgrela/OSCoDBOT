@@ -25,6 +25,8 @@ class AppConfig:
     # Debugging
     save_shots: bool = False
     shots_dir: Path = Path("debug_captures")
+    # Max total bytes to keep in shots_dir before pruning oldest files
+    shots_max_bytes: int = 1_073_741_824  # 1 GiB
 
     # Click behavior
     # When True, restore mouse cursor to its previous position after a click
@@ -110,6 +112,10 @@ def make_config() -> AppConfig:
     save_shots = _env_bool("SAVE_SHOTS", False)
     shots_dir_env = os.getenv("SHOTS_DIR", "").strip()
     shots_dir = Path(shots_dir_env) if shots_dir_env else Path("debug_captures")
+    try:
+        shots_max_bytes = int(os.getenv("SHOTS_MAX_BYTES", str(1_073_741_824)).strip())
+    except Exception:
+        shots_max_bytes = 1_073_741_824
     use_webview = _env_bool("USE_WEBVIEW", True)
     ui_pin_to_game = _env_bool("UI_PIN_TO_GAME", True)
     ui_topmost = _env_bool("UI_TOPMOST", True)
@@ -134,6 +140,7 @@ def make_config() -> AppConfig:
         click_snap_back=click_snap_back,
         save_shots=save_shots,
         shots_dir=shots_dir,
+        shots_max_bytes=shots_max_bytes,
         use_webview=use_webview,
         ui_pin_to_game=ui_pin_to_game,
         ui_topmost=ui_topmost,
