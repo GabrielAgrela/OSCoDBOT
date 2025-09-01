@@ -160,7 +160,7 @@ def build_farm_state(cfg: AppConfig, spec: FarmSpec) -> tuple[State, Context]:
                 Screenshot(name=f"{key}_cap_marchfull_chk"),
                 CheckTemplate(
                     name="MarchFullCheck",
-                    templates=["MarchFullButton.png"],
+                    templates=["MarchFullButton.png", "FastMarchFullButton.png"],
                     region_pct=(0.0, 0.0, 1.0, 1.0),
                     threshold=cfg.match_threshold,
                 ),
