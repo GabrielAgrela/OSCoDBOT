@@ -51,10 +51,17 @@ def api_modes():
 def api_status():
     if not _running:
         return jsonify({"running": False})
+    paused = False
+    try:
+        if _running.machine and _running.ctx:
+            paused = bool(_running.machine.is_paused(_running.ctx))
+    except Exception:
+        paused = False
     return jsonify({
         "running": True,
         "kind": _running.kind,
         "modes": list(_running.modes),
+        "paused": paused,
     })
 
 
@@ -88,6 +95,28 @@ def api_start():
 @app.post("/api/stop")
 def api_stop():
     _stop_running()
+    return jsonify({"ok": True})
+
+
+@app.post("/api/pause")
+def api_pause():
+    if not _running or not _running.machine or not _running.ctx:
+        return jsonify({"error": "Not running"}), 400
+    try:
+        _running.machine.pause(_running.ctx)
+    except Exception:
+        return jsonify({"error": "Failed to pause"}), 500
+    return jsonify({"ok": True})
+
+
+@app.post("/api/resume")
+def api_resume():
+    if not _running or not _running.machine or not _running.ctx:
+        return jsonify({"error": "Not running"}), 400
+    try:
+        _running.machine.resume(_running.ctx)
+    except Exception:
+        return jsonify({"error": "Failed to resume"}), 500
     return jsonify({"ok": True})
 
 

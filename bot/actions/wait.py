@@ -28,4 +28,11 @@ class Wait(Action):
         while time.time() < end_by:
             if ctx.stop_event.is_set():
                 break
+            # Honor pause: idle while paused
+            try:
+                if getattr(ctx, "pause_event", None) is not None and ctx.pause_event.is_set():
+                    time.sleep(0.05)
+                    continue
+            except Exception:
+                pass
             time.sleep(0.01)

@@ -36,7 +36,7 @@ def build_scouts_state(cfg: AppConfig) -> tuple[State, Context]:
                 Screenshot(name="scout_cap_2"),
                 FindAndClick(
                     name="ScoutSelectExplore",
-                    templates=["ScoutSelectExplore.png"],
+                    templates=["ScoutSelectExplore.png", "ScoutSelectExplore2.png"],
                     region_pct=(0.0, 0.0, 1.0, 1.0),
                     threshold=cfg.match_threshold,
                 ),

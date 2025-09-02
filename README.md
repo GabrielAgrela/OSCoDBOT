@@ -65,6 +65,7 @@ Usage
 3) Buttons:
    - "Start Scouts" runs the scouts loop.
    - "Start Farm Wood" runs the wood-farm flow. Starting one stops the other.
+   - "Pause" temporarily pauses the active run (Resume to continue).
 
 Behavior
 - Scouts: Screenshot then find/click templates in sequence with waits.

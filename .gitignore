@@ -72,7 +72,7 @@ Thumbs.db
 
 # Logs
 *.log
-
+*.log.*
 # PyInstaller
 *.manifest
 *.spec

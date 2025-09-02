@@ -37,6 +37,8 @@ class Context:
 
     # Control
     stop_event: threading.Event = field(default_factory=threading.Event)
+    # Pause control: when set, processing halts until cleared
+    pause_event: threading.Event = field(default_factory=threading.Event)
     # Capture handle (reused per thread to avoid resource churn/leaks)
     _mss: Optional[object] = None
     # Debugging
@@ -75,9 +77,25 @@ class SequenceState:
 
     def run_once(self, ctx: Context) -> None:
         ctx.current_state_name = self.name
+        # Honor pause at the start of a cycle
+        try:
+            while getattr(ctx, "pause_event", None) is not None and ctx.pause_event.is_set():
+                if ctx.stop_event.is_set():
+                    return
+                time.sleep(0.05)
+        except Exception:
+            pass
         for action in self._actions:
             if ctx.stop_event.is_set():
                 return
+            # Honor pause between actions
+            try:
+                while getattr(ctx, "pause_event", None) is not None and ctx.pause_event.is_set():
+                    if ctx.stop_event.is_set():
+                        return
+                    time.sleep(0.05)
+            except Exception:
+                pass
             try:
                 # Bring target window to foreground before each action
                 try:
@@ -132,6 +150,11 @@ class StateMachine:
         if self._thread and self._thread.is_alive():
             return
         ctx.stop_event.clear()
+        # Ensure we are not paused when starting
+        try:
+            ctx.pause_event.clear()
+        except Exception:
+            pass
         try:
             ctx.last_progress_ts = time.time()
         except Exception:
@@ -148,6 +171,11 @@ class StateMachine:
 
     def stop(self, ctx: Context) -> None:
         ctx.stop_event.set()
+        # Clear pause so any waits unblock
+        try:
+            ctx.pause_event.clear()
+        except Exception:
+            pass
         try:
             self._watchdog_stop.set()
             if self._watchdog and self._watchdog.is_alive():
@@ -175,6 +203,13 @@ class StateMachine:
 
     def _run_loop(self, ctx: Context) -> None:
         while not ctx.stop_event.is_set():
+            # If paused, idle here but remain responsive to stop
+            try:
+                if getattr(ctx, "pause_event", None) is not None and ctx.pause_event.is_set():
+                    time.sleep(0.05)
+                    continue
+            except Exception:
+                pass
             self._state.run_once(ctx)
 
     def _watchdog_loop(self, ctx: Context) -> None:
@@ -185,6 +220,16 @@ class StateMachine:
         while not self._watchdog_stop.is_set() and not ctx.stop_event.is_set():
             now = time.time()
             try:
+                # If paused, suppress stall recovery and mark as paused in logs periodically
+                try:
+                    if getattr(ctx, "pause_event", None) is not None and ctx.pause_event.is_set():
+                        if now - last_log >= 15.0:
+                            logs.add("[Watchdog] paused", level="info")
+                            last_log = now
+                        time.sleep(0.5)
+                        continue
+                except Exception:
+                    pass
                 since = max(0.0, now - float(getattr(ctx, "last_progress_ts", 0.0)))
                 if now - last_log >= 15.0:
                     step = getattr(ctx, "current_graph_step", "") or getattr(ctx, "current_state_name", "?")
@@ -267,6 +312,27 @@ class StateMachine:
                 pass
             time.sleep(2.0)
 
+    # Pause/resume controls
+    def pause(self, ctx: Context) -> None:
+        try:
+            ctx.pause_event.set()
+        except Exception:
+            pass
+
+    def resume(self, ctx: Context) -> None:
+        try:
+            ctx.pause_event.clear()
+            # Consider progress updated to avoid immediate stall heuristics
+            ctx.last_progress_ts = time.time()
+        except Exception:
+            pass
+
+    def is_paused(self, ctx: Context) -> bool:
+        try:
+            return bool(getattr(ctx, "pause_event", None) is not None and ctx.pause_event.is_set())
+        except Exception:
+            return False
+
 
 # Branching graph-based state machine
 
@@ -301,9 +367,25 @@ class GraphState:
         last_result: Optional[bool] = None
         ctx.current_state_name = self.name
         ctx.current_graph_step = step.name
+        # Honor pause at the start of a step
+        try:
+            while getattr(ctx, "pause_event", None) is not None and ctx.pause_event.is_set():
+                if ctx.stop_event.is_set():
+                    return
+                time.sleep(0.05)
+        except Exception:
+            pass
         for action in step.actions:
             if ctx.stop_event.is_set():
                 return
+            # Honor pause between actions
+            try:
+                while getattr(ctx, "pause_event", None) is not None and ctx.pause_event.is_set():
+                    if ctx.stop_event.is_set():
+                        return
+                    time.sleep(0.05)
+            except Exception:
+                pass
             try:
                 # Bring target window to foreground before each action
                 try:

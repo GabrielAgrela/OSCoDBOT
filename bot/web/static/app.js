@@ -1,4 +1,5 @@
 let running = false;
+let paused = false;
 let lastLogId = 0;
 
 function getSelection() {
@@ -8,11 +9,16 @@ function getSelection() {
 
 function updateControls() {
   const startBtn = document.getElementById('start');
+  const pauseBtn = document.getElementById('pause');
   const sel = getSelection();
   // Disable only when not running and nothing selected (can't start)
   startBtn.disabled = !running && sel.length === 0;
   const label = document.getElementById('start-label');
   label.textContent = running ? 'Stop' : 'Start';
+  // Pause button only enabled when running
+  pauseBtn.disabled = !running;
+  const plabel = document.getElementById('pause-label');
+  plabel.textContent = paused ? 'Resume' : 'Pause';
 }
 
 async function status() {
@@ -23,7 +29,9 @@ async function status() {
     const startBtn = document.getElementById('start');
     startBtn.classList.remove('loading');
     running = !!data.running;
+    paused = !!data.paused;
     if (!running) { el.textContent = 'Idle'; updateControls(); return; }
+    if (paused) { el.textContent = 'Paused'; updateControls(); return; }
     if (data.kind !== 'single') {
       el.textContent = `Alternating: ${data.modes.join(' -> ')}`;
     } else {
@@ -95,8 +103,25 @@ async function start() {
   }
 }
 
+async function togglePause() {
+  const pauseBtn = document.getElementById('pause');
+  if (!running) return;
+  try {
+    const url = paused ? '/api/resume' : '/api/pause';
+    const res = await fetch(url, { method: 'POST' });
+    if (!res.ok) {
+      alert(paused ? 'Failed to resume' : 'Failed to pause');
+    }
+  } catch (e) {
+    alert(paused ? 'Failed to resume' : 'Failed to pause');
+  } finally {
+    await status();
+  }
+}
+
 window.addEventListener('DOMContentLoaded', () => {
   document.getElementById('start').addEventListener('click', start);
+  document.getElementById('pause').addEventListener('click', togglePause);
   document.querySelectorAll('.mode-check').forEach(el => el.addEventListener('change', updateControls));
   updateControls();
   status();
