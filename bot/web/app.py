@@ -6,6 +6,8 @@ from typing import Dict, List, Optional, Tuple
 from flask import Flask, jsonify, render_template, request
 import time as _time
 import logging
+import os
+import threading as _threading
 
 from bot.config import DEFAULT_CONFIG, AppConfig
 from bot.core.state_machine import Context, State, StateMachine
@@ -217,3 +219,27 @@ def api_metrics():
 
 def run_web(host: str = "127.0.0.1", port: int = 5000, debug: bool = False) -> None:
     app.run(host=host, port=port, debug=debug)
+
+
+@app.post("/api/quit")
+def api_quit():
+    """Stop any running state and terminate the process shortly after responding."""
+    try:
+        _stop_running()
+    except Exception:
+        pass
+    # Delay exit slightly so the HTTP response can be delivered cleanly
+    def _later_exit():
+        try:
+            _time.sleep(0.2)
+        except Exception:
+            pass
+        try:
+            os._exit(0)
+        except Exception:
+            raise SystemExit(0)
+    try:
+        _threading.Thread(target=_later_exit, daemon=True).start()
+    except Exception:
+        pass
+    return jsonify({"ok": True})

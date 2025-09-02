@@ -19,6 +19,7 @@ body { font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, A
 .btn:hover { background:#243041; }
 .btn:active { transform: translateY(1px); }
 .btn.primary { background: linear-gradient(135deg, var(--pri), var(--pri2)); border-color: transparent; color:white; }
+.btn.danger { background: linear-gradient(135deg, #ef4444, #dc2626); border-color: transparent; color: white; }
 .btn[disabled] { opacity:.5; cursor:not-allowed; }
 .spinner { width:0; height:0; margin-right:0; display:none; }
 .loading .spinner { width:10px; height:10px; margin-right:6px; border-radius:50%; border:2px solid rgba(255,255,255,.5); border-top-color:transparent; display:inline-block; animation: spin .8s linear infinite; }

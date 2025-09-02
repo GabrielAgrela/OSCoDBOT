@@ -147,6 +147,8 @@ async function togglePause() {
 window.addEventListener('DOMContentLoaded', () => {
   document.getElementById('start').addEventListener('click', start);
   document.getElementById('pause').addEventListener('click', togglePause);
+  const quitBtn = document.getElementById('quit');
+  if (quitBtn) quitBtn.addEventListener('click', quitApp);
   document.querySelectorAll('.mode-check').forEach(el => el.addEventListener('change', updateControls));
   updateControls();
   status();
@@ -174,5 +176,20 @@ async function metrics() {
     }
   } catch (e) {
     // ignore
+  }
+}
+
+async function quitApp() {
+  try {
+    // Optional confirmation to avoid accidental closes
+    const ok = confirm('Close the bot?');
+    if (!ok) return;
+  } catch (e) {
+    // ignore if confirm not available
+  }
+  try {
+    await fetch('/api/quit', { method: 'POST' });
+  } catch (e) {
+    // ignore; process will terminate shortly anyway
   }
 }
