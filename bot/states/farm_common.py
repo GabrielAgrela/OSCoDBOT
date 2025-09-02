@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+import random
 from typing import Sequence, Tuple
 
 from bot.config import AppConfig
@@ -14,6 +15,7 @@ from bot.actions import (
     CheckTemplate,
     CooldownGate,
     SetCooldown,
+    SetCooldownRandom,
     Retry,
 )
 
@@ -171,7 +173,12 @@ def build_farm_state(cfg: AppConfig, spec: FarmSpec) -> tuple[State, Context]:
         GraphStep(
             name="CooldownAndEnd",
             actions=[
-                SetCooldown(name=f"{key}_set_cooldown", key=key, seconds=60*30),
+                SetCooldownRandom(
+                    name=f"{key}_set_cooldown",
+                    key=key,
+                    min_seconds=getattr(cfg, 'farm_cooldown_min_s', 300),
+                    max_seconds=getattr(cfg, 'farm_cooldown_max_s', 3600),
+                ),
             ],
             on_success="EndNoLegions",
             on_failure="EndNoLegions",

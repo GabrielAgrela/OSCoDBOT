@@ -9,7 +9,13 @@ import mss
 import numpy as np
 
 from bot.core.state_machine import Action, Context
-from bot.core.window import find_window_by_title_substr, get_client_rect_screen, set_window_client_size
+from bot.core.window import (
+    find_window_by_title_substr,
+    get_client_rect_screen,
+    set_window_client_size,
+    move_window_xy,
+    get_monitor_rect_for_window,
+)
 from bot.config import DEFAULT_CONFIG
 
 
@@ -41,6 +47,13 @@ class Screenshot(Action):
                     set_window_client_size(hwnd, target_w, target_h)
                     # Re-read rect after resize
                     rect_now = get_client_rect_screen(hwnd)
+                    # After resizing, position window at top-left of the current monitor
+                    try:
+                        mon = get_monitor_rect_for_window(hwnd, work_area=False)
+                        move_window_xy(hwnd, mon.left, mon.top)
+                        rect_now = get_client_rect_screen(hwnd)
+                    except Exception:
+                        pass
                 rect = rect_now
             except Exception:
                 rect = get_client_rect_screen(hwnd)

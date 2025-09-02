@@ -97,17 +97,6 @@ class SequenceState:
             except Exception:
                 pass
             try:
-                # Bring target window to foreground before each action
-                try:
-                    hwnd = ctx.hwnd
-                    if hwnd is None:
-                        hwnd = find_window_by_title_substr(ctx.window_title_substr)
-                        if hwnd is not None:
-                            ctx.hwnd = hwnd
-                    if hwnd is not None:
-                        bring_to_front(hwnd)
-                except Exception:
-                    pass
                 start = time.time()
                 ctx.last_action_name = action.name
                 _ = action.run(ctx)
@@ -157,6 +146,17 @@ class StateMachine:
             pass
         try:
             ctx.last_progress_ts = time.time()
+        except Exception:
+            pass
+        # Bring the target window to foreground once at start
+        try:
+            hwnd = ctx.hwnd
+            if hwnd is None:
+                hwnd = find_window_by_title_substr(ctx.window_title_substr)
+                if hwnd is not None:
+                    ctx.hwnd = hwnd
+            if hwnd is not None:
+                bring_to_front(hwnd)
         except Exception:
             pass
         self._thread = threading.Thread(target=self._run_loop, args=(ctx,), daemon=True)
@@ -316,6 +316,17 @@ class StateMachine:
     def pause(self, ctx: Context) -> None:
         try:
             ctx.pause_event.set()
+            # Bring target window to foreground when pausing, per user preference
+            try:
+                hwnd = ctx.hwnd
+                if hwnd is None:
+                    hwnd = find_window_by_title_substr(ctx.window_title_substr)
+                    if hwnd is not None:
+                        ctx.hwnd = hwnd
+                if hwnd is not None:
+                    bring_to_front(hwnd)
+            except Exception:
+                pass
         except Exception:
             pass
 
@@ -324,6 +335,17 @@ class StateMachine:
             ctx.pause_event.clear()
             # Consider progress updated to avoid immediate stall heuristics
             ctx.last_progress_ts = time.time()
+            # Bring target window to foreground when resuming
+            try:
+                hwnd = ctx.hwnd
+                if hwnd is None:
+                    hwnd = find_window_by_title_substr(ctx.window_title_substr)
+                    if hwnd is not None:
+                        ctx.hwnd = hwnd
+                if hwnd is not None:
+                    bring_to_front(hwnd)
+            except Exception:
+                pass
         except Exception:
             pass
 
@@ -387,17 +409,6 @@ class GraphState:
             except Exception:
                 pass
             try:
-                # Bring target window to foreground before each action
-                try:
-                    hwnd = ctx.hwnd
-                    if hwnd is None:
-                        hwnd = find_window_by_title_substr(ctx.window_title_substr)
-                        if hwnd is not None:
-                            ctx.hwnd = hwnd
-                    if hwnd is not None:
-                        bring_to_front(hwnd)
-                except Exception:
-                    pass
                 start = time.time()
                 ctx.last_action_name = action.name
                 res = action.run(ctx)

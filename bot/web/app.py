@@ -57,11 +57,34 @@ def api_status():
             paused = bool(_running.machine.is_paused(_running.ctx))
     except Exception:
         paused = False
+    # Report cooldowns (remaining seconds) for active modes
+    cooldowns = {}
+    try:
+        if _running.ctx and _running.modes:
+            now = _time.time()
+            # Map UI mode keys to cooldown keys used by states
+            alias = {
+                "farm_wood": "farm",
+                "farm_ore": "ore",
+                "farm_gold": "gold",
+            }
+            for mode_key in _running.modes:
+                cd_key = alias.get(mode_key, mode_key)
+                try:
+                    until = float(getattr(_running.ctx, f"_cooldown_until_{cd_key}", 0.0))
+                except Exception:
+                    until = 0.0
+                remain = max(0, int(until - now))
+                if remain > 0:
+                    cooldowns[mode_key] = remain
+    except Exception:
+        cooldowns = {}
     return jsonify({
         "running": True,
         "kind": _running.kind,
         "modes": list(_running.modes),
         "paused": paused,
+        "cooldowns": cooldowns,
     })
 
 

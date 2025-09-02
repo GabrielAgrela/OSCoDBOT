@@ -53,6 +53,10 @@ class AppConfig:
     log_max_bytes: int = 1_048_576  # 1 MB
     log_backups: int = 5            # number of rotated files to keep
 
+    # Farm cooldown window (seconds) for random delay between farm cycles
+    farm_cooldown_min_s: int = 300    # 5 minutes
+    farm_cooldown_max_s: int = 3600   # 1 hour
+
 
 def _load_env_file() -> None:
     """Lightweight .env loader without external dependency.
@@ -105,6 +109,29 @@ def _env_bool(name: str, default: bool) -> bool:
     return default
 
 
+def _env_duration_seconds(name: str, default: int) -> int:
+    """Parse duration like '300', '5m', '1h' into seconds (int)."""
+    val: Optional[str] = os.getenv(name)
+    if not val:
+        return int(default)
+    s = val.strip().lower()
+    try:
+        if s.endswith('ms'):
+            return max(0, int(float(s[:-2].strip()) / 1000.0))
+        if s.endswith('s'):
+            return max(0, int(float(s[:-1].strip())))
+        if s.endswith('m'):
+            return max(0, int(float(s[:-1].strip()) * 60))
+        if s.endswith('h'):
+            return max(0, int(float(s[:-1].strip()) * 3600))
+        if s.endswith('d'):
+            return max(0, int(float(s[:-1].strip()) * 86400))
+        # No suffix: treat as seconds
+        return max(0, int(float(s)))
+    except Exception:
+        return int(default)
+
+
 def make_config() -> AppConfig:
     # Load .env if present
     _load_env_file()
@@ -146,6 +173,11 @@ def make_config() -> AppConfig:
         log_backups = int(os.getenv("LOG_BACKUPS", "5").strip())
     except Exception:
         log_backups = 5
+    # Farm cooldown min/max
+    cd_min = _env_duration_seconds("FARM_COOLDOWN_MIN", 300)
+    cd_max = _env_duration_seconds("FARM_COOLDOWN_MAX", 3600)
+    if cd_max < cd_min:
+        cd_min, cd_max = cd_max, cd_min
     return AppConfig(
         window_title_substr=window_title,
         match_threshold=match_threshold,
@@ -161,6 +193,8 @@ def make_config() -> AppConfig:
         ui_frameless=ui_frameless,
         force_window_width=force_window_width,
         force_window_height=force_window_height,
+        farm_cooldown_min_s=cd_min,
+        farm_cooldown_max_s=cd_max,
         log_to_file=log_to_file,
         log_file=log_file,
         log_max_bytes=log_max_bytes,

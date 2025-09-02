@@ -26,12 +26,37 @@ async function status() {
     const res = await fetch('/api/status');
     const data = await res.json();
     const el = document.getElementById('status');
+    const cdEl = document.getElementById('cooldown');
     const startBtn = document.getElementById('start');
     startBtn.classList.remove('loading');
     running = !!data.running;
     paused = !!data.paused;
-    if (!running) { el.textContent = 'Idle'; updateControls(); return; }
-    if (paused) { el.textContent = 'Paused'; updateControls(); return; }
+    if (!running) { el.textContent = 'Idle'; if (cdEl) cdEl.textContent = 'Cooldown: n/a'; updateControls(); return; }
+    if (paused) { el.textContent = 'Paused'; /* still show cooldown below if any */ }
+    // Show cooldowns below window size
+    const cds = data.cooldowns || {};
+    const ents = Object.entries(cds).filter(([k,v]) => (v||0) > 0);
+    if (cdEl) {
+      const fmt = (sec) => {
+        sec = Math.max(0, parseInt(sec, 10) || 0);
+        const h = Math.floor(sec / 3600);
+        const m = Math.floor((sec % 3600) / 60);
+        const s = sec % 60;
+        if (h > 0) return `${h}h ${m}m ${s}s`;
+        if (m > 0) return `${m}m ${s}s`;
+        return `${s}s`;
+      };
+      if (ents.length === 0) {
+        cdEl.textContent = 'Cooldown: none';
+      } else if (ents.length === 1) {
+        const [k, v] = ents[0];
+        cdEl.textContent = `Cooldown: ${k} ${fmt(v)} remaining`;
+      } else {
+        const parts = ents.map(([k, v]) => `${k} ${fmt(v)}`);
+        cdEl.textContent = `Cooldowns: ${parts.join(', ')} remaining`;
+      }
+    }
+    if (paused) { updateControls(); return; }
     if (data.kind !== 'single') {
       el.textContent = `Alternating: ${data.modes.join(' -> ')}`;
     } else {

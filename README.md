@@ -78,6 +78,7 @@ Configuration
   - `UI_MARGIN_LEFT_PCT=0.4%` and `UI_MARGIN_TOP_PCT=56%`
   - `MATCH_THRESHOLD=90%` (or `0.9`)
   - `CLICK_SNAP_BACK=true` to restore the mouse to its previous position after a click (`false` to leave it at the clicked point)
+  - `FARM_COOLDOWN_MIN=5m` and `FARM_COOLDOWN_MAX=1h` to randomize the cooldown delay between farm cycles (supports `s`, `m`, `h`, `d`).
 - Defaults are defined in `bot/config.py` if not provided via `.env`.
 - Templates: place PNGs under `assets/templates/` per the state definitions.
 

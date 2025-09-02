@@ -28,17 +28,6 @@ class Retry(Action):
             for act in self.actions:
                 if ctx.stop_event.is_set():
                     return False
-                # Bring target window to foreground before each inner action
-                try:
-                    hwnd = ctx.hwnd
-                    if hwnd is None:
-                        hwnd = find_window_by_title_substr(ctx.window_title_substr)
-                        if hwnd is not None:
-                            ctx.hwnd = hwnd
-                    if hwnd is not None:
-                        bring_to_front(hwnd)
-                except Exception:
-                    pass
                 # Time the inner action (update telemetry like GraphState)
                 start = time.time()
                 ctx.last_action_name = act.name
@@ -67,4 +56,3 @@ class Retry(Action):
         except Exception:
             pass
         return False
-

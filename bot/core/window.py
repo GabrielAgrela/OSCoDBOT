@@ -218,3 +218,28 @@ def move_window_xy(hwnd: int, x: int, y: int) -> None:
         win32gui.SetWindowPos(hwnd, 0, int(x), int(y), 0, 0, flags)
     except Exception:
         pass
+
+
+def get_monitor_rect_for_window(hwnd: int, work_area: bool = False) -> WindowRect:
+    """Return the bounding rect of the monitor that contains (or is nearest to) the window.
+
+    - When work_area is True, returns the work area (excluding taskbar).
+    - Coordinates are in the virtual desktop space (can be negative on multi-monitor).
+    """
+    try:
+        hmon = win32api.MonitorFromWindow(hwnd, win32con.MONITOR_DEFAULTTONEAREST)
+        info = win32api.GetMonitorInfo(hmon)
+        key = 'Work' if work_area else 'Monitor'
+        left, top, right, bottom = info.get(key, info.get('Monitor'))
+        return WindowRect(left=int(left), top=int(top), width=int(right - left), height=int(bottom - top))
+    except Exception:
+        # Fallback to primary monitor bounds
+        try:
+            # SM_XVIRTUALSCREEN etc. give the full virtual bounds; primary origin via SM_XVIRTUALSCREEN/SM_Y...
+            vx = win32api.GetSystemMetrics(76)
+            vy = win32api.GetSystemMetrics(77)
+            vw = win32api.GetSystemMetrics(78)
+            vh = win32api.GetSystemMetrics(79)
+            return WindowRect(left=int(vx), top=int(vy), width=int(vw), height=int(vh))
+        except Exception:
+            return WindowRect(0, 0, 0, 0)
