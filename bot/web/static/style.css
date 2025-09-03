@@ -16,8 +16,20 @@ body { font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, A
 .mode:hover .chip { transform: translateY(-1px); }
 .mode input:checked + .chip { background: linear-gradient(135deg, var(--pri), var(--pri2)); border-color: transparent; color: white; box-shadow: 0 6px 16px rgba(59,130,246,.35); }
 .panel { border:1px solid var(--bord); background: var(--card); border-radius: 8px; padding: 8px; box-shadow: 0 3px 12px rgba(0,0,0,.18); }
-/* Right-side panel: fixed to viewport, independent scroll */
-.container > .panel:not(#shot-panel) { position: fixed; right: 8px; top: 8px; width: var(--side); max-width: 300px; height: calc(100vh - 16px); overflow-y: auto; z-index: 10; }
+/* Right-side panel: fixed to viewport; log scrolls inside */
+.container > .panel:not(#shot-panel) {
+  position: fixed;
+  right: 8px;
+  top: 8px;
+  width: var(--side);
+  max-width: 300px;
+  height: calc(100vh - 16px);
+  /* Prevent panel from scrolling; allow inner log to scroll */
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  z-index: 10;
+}
 .controls { display:flex; gap: 6px; }
 .btn { padding: 6px 8px; border-radius: 8px; border:1px solid var(--bord); background:#1f2937; color: var(--fg); cursor:pointer; transition: background .15s ease, transform .05s ease; font-size: 12px; }
 .btn:hover { background:#243041; }
@@ -32,7 +44,7 @@ body { font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, A
 .footer { margin-top: 8px; opacity:.6; font-size:11px; text-align:center; }
 
 /* Debug log panel */
-.log { margin-top: 8px; font: 11px/1.35 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; overflow-y: auto; border-top: 1px dashed var(--bord); padding-top: 6px; }
+.log { margin-top: 8px; font: 11px/1.35 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; overflow-y: auto; border-top: 1px dashed var(--bord); padding-top: 6px; flex: 1 1 auto; min-height: 0; }
 .log-line { white-space: pre-wrap; word-break: break-word; opacity: .95; }
 .log-line.info { color: var(--fg); opacity: .8; }
 .log-line.ok { color: #22c55e; }
