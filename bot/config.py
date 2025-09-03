@@ -18,6 +18,31 @@ class AppConfig:
     # Default side region where the first image is searched (x, y, w, h in 0..1)
     units_overview_region_pct: tuple[float, float, float, float] = (0.9, 0.15, 0.1, 0.6)  # right 20%
 
+    #magifier region
+    magifier_region_pct: tuple[float, float, float, float] = (0.0, 0.73, 0.1, 0.15)
+
+    #alliance health region
+    alliance_help_region_pct: tuple[float, float, float, float] = (0.65, 0.7, 0.2, 0.2)
+
+    #resource search selection region
+    resource_search_selection_region_pct: tuple[float, float, float, float] = (0.1, 0.8, 0.8, 0.2)
+
+    #resoure search button region
+    resource_search_button_region_pct: tuple[float, float, float, float] = (0.1, 0.63, 0.8, 0.2)
+
+    #gather button region
+    gather_button_region_pct: tuple[float, float, float, float] = (0.55, 0.6, 0.35, 0.3)
+
+    #create legions button region
+    create_legions_button_region_pct: tuple[float, float, float, float] = (0.5, 0.1, 0.4, 0.8)
+
+    #march button region
+    march_button_region_pct: tuple[float, float, float, float] = (0.6, 0.8, 0.4, 0.2)
+    
+    #back arrow region
+    back_arrow_region_pct: tuple[float, float, float, float] = (0.0, 0.0, 0.1, 0.1)
+
+
     # Assets directory
     assets_dir: Path = Path("assets")
     templates_dir: Path = Path("assets/templates")
@@ -145,6 +170,13 @@ def make_config() -> AppConfig:
     save_shots = _env_bool("SAVE_SHOTS", False)
     shots_dir_env = os.getenv("SHOTS_DIR", "").strip()
     shots_dir = Path(shots_dir_env) if shots_dir_env else Path("debug_captures")
+    # Make shots_dir absolute to avoid CWD differences between UI/server threads
+    try:
+        if not shots_dir.is_absolute():
+            shots_dir = Path.cwd() / shots_dir
+    except Exception:
+        # Fallback: leave as-is if cwd is unavailable
+        pass
     try:
         shots_max_bytes = int(os.getenv("SHOTS_MAX_BYTES", str(1_073_741_824)).strip())
     except Exception:

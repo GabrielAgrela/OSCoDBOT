@@ -67,7 +67,7 @@ def build_farm_state(cfg: AppConfig, spec: FarmSpec) -> tuple[State, Context]:
                 FindAndClick(
                     name="Magnifier",
                     templates=["Magnifier.png"],
-                    region_pct=(0.0, 0.7, 0.1, 0.75),
+                    region_pct=cfg.magifier_region_pct,
                     threshold=cfg.match_threshold,
                 ),
                 Wait(name="wait_after_magnifier", seconds=1.0),
@@ -82,7 +82,7 @@ def build_farm_state(cfg: AppConfig, spec: FarmSpec) -> tuple[State, Context]:
                 FindAndClick(
                     name="MapIcon",
                     templates=["MapIcon.png"],
-                    region_pct=(0.0, 0.0, 1.0, 1.0),
+                    region_pct=cfg.magifier_region_pct,
                     threshold=cfg.match_threshold,
                 ),
                 Wait(name="wait_after_map", seconds=1.0),
@@ -97,7 +97,7 @@ def build_farm_state(cfg: AppConfig, spec: FarmSpec) -> tuple[State, Context]:
                 FindAndClick(
                     name="MagnifierAgain",
                     templates=["Magnifier.png"],
-                    region_pct=(0.0, 0.0, 1.0, 1.0),
+                    region_pct=cfg.magifier_region_pct,
                     threshold=cfg.match_threshold,
                 ),
                 Wait(name="wait_after_magnifier2", seconds=1.0),
@@ -112,13 +112,13 @@ def build_farm_state(cfg: AppConfig, spec: FarmSpec) -> tuple[State, Context]:
                 FindAndClick(
                     name=res_label,
                     templates=res_templates,
-                    region_pct=(0.0, 0.0, 1.0, 1.0),
+                    region_pct=cfg.resource_search_selection_region_pct,
                     threshold=cfg.match_threshold,
                 ),
                 Wait(name=f"wait_after_{key}", seconds=1.0),
             ],
             on_success="SearchFarmButton",
-            on_failure=res_label,
+            on_failure="EndNoLegions",
         ),
         GraphStep(
             name="SearchFarmButton",
@@ -131,7 +131,7 @@ def build_farm_state(cfg: AppConfig, spec: FarmSpec) -> tuple[State, Context]:
                         FindAndClick(
                             name="SearchFarmButton",
                             templates=["SearchFarmButton.png"],
-                            region_pct=(0.0, 0.0, 1.0, 1.0),
+                            region_pct=cfg.resource_search_button_region_pct,
                             threshold=cfg.match_threshold,
                         ),
                         Wait(name="wait_after_search", seconds=2.0),
@@ -148,7 +148,7 @@ def build_farm_state(cfg: AppConfig, spec: FarmSpec) -> tuple[State, Context]:
                 FindAndClick(
                     name="GatherButton",
                     templates=["GatherButton.png"],
-                    region_pct=(0.0, 0.0, 1.0, 1.0),
+                    region_pct=cfg.gather_button_region_pct,
                     threshold=cfg.match_threshold,
                 ),
                 Wait(name="wait_after_gather", seconds=1.0),
@@ -163,7 +163,7 @@ def build_farm_state(cfg: AppConfig, spec: FarmSpec) -> tuple[State, Context]:
                 CheckTemplate(
                     name="MarchFullCheck",
                     templates=["MarchFullButton.png", "FastMarchFullButton.png"],
-                    region_pct=(0.0, 0.0, 1.0, 1.0),
+                    region_pct=cfg.create_legions_button_region_pct,
                     threshold=cfg.match_threshold,
                 ),
             ],
@@ -192,7 +192,7 @@ def build_farm_state(cfg: AppConfig, spec: FarmSpec) -> tuple[State, Context]:
                 FindAndClick(
                     name="GatherButtonRetry",
                     templates=["GatherButton.png"],
-                    region_pct=(0.0, 0.0, 1.0, 1.0),
+                    region_pct=cfg.gather_button_region_pct,
                     threshold=cfg.match_threshold,
                 ),
                 Wait(name="wait_after_gather_retry", seconds=spec.wait_after_gather_retry_s),
@@ -207,7 +207,7 @@ def build_farm_state(cfg: AppConfig, spec: FarmSpec) -> tuple[State, Context]:
                 FindAndClick(
                     name="CreateLegionsButton",
                     templates=["CreateLegionsButton.png"],
-                    region_pct=(0.0, 0.0, 1.0, 1.0),
+                    region_pct=cfg.create_legions_button_region_pct,
                     threshold=cfg.match_threshold,
                 ),
                 Wait(name="wait_after_legions", seconds=spec.wait_after_legions_s),
@@ -232,7 +232,7 @@ def build_farm_state(cfg: AppConfig, spec: FarmSpec) -> tuple[State, Context]:
                 FindAndClick(
                     name="March",
                     templates=["March.png"],
-                    region_pct=(0.0, 0.0, 1.0, 1.0),
+                    region_pct=cfg.march_button_region_pct,
                     threshold=cfg.match_threshold,
                 ),
                 Wait(name="wait_after_march", seconds=1.0),

@@ -3,7 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Dict, List, Optional, Tuple
 
-from flask import Flask, jsonify, render_template, request
+from flask import Flask, jsonify, render_template, request, send_file
 import time as _time
 import logging
 import os
@@ -215,6 +215,70 @@ def api_metrics():
         }
     }
     return jsonify(data)
+
+
+@app.get("/shots/latest")
+def shots_latest():
+    """Return the most recent annotated match screenshot as an image response.
+
+    Looks for files like "*_match_*.png" inside the configured shots directory.
+    Sends the file bytes with Cache-Control disabled so the UI can poll safely.
+    """
+    try:
+        shots_dir = DEFAULT_CONFIG.shots_dir
+    except Exception:
+        from pathlib import Path as _Path
+        shots_dir = _Path("debug_captures")
+    try:
+        import os as _os
+        from pathlib import Path as _Path
+        folder = _Path(shots_dir)
+        if not folder.exists() or not folder.is_dir():
+            return ("No shots", 404)
+        # Find latest "match" png
+        latest_path = None
+        latest_mtime = -1.0
+        candidates = []
+        for p in folder.iterdir():
+            try:
+                if not p.is_file():
+                    continue
+                name = p.name.lower()
+                if not name.endswith('.png'):
+                    continue
+                if "_match_" not in name:
+                    # collect for fallback if no annotated matches exist
+                    candidates.append(p)
+                    continue
+                mt = p.stat().st_mtime
+                if mt > latest_mtime:
+                    latest_mtime = mt
+                    latest_path = p
+            except Exception:
+                continue
+        # Fallback: use latest any PNG if no annotated match was found
+        if not latest_path:
+            for p in candidates:
+                try:
+                    mt = p.stat().st_mtime
+                    if mt > latest_mtime:
+                        latest_mtime = mt
+                        latest_path = p
+                except Exception:
+                    continue
+        if not latest_path:
+            return ("No shots", 404)
+        # Send file with no caching
+        resp = send_file(str(latest_path))
+        try:
+            resp.headers["Cache-Control"] = "no-store, no-cache, must-revalidate, max-age=0"
+            resp.headers["Pragma"] = "no-cache"
+            resp.headers["Expires"] = "0"
+        except Exception:
+            pass
+        return resp
+    except Exception:
+        return ("No shots", 404)
 
 
 def run_web(host: str = "127.0.0.1", port: int = 5000, debug: bool = False) -> None:

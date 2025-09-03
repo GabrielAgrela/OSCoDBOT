@@ -5,7 +5,11 @@ from bot.core.state_machine import Context, GraphState, GraphStep, State
 from bot.actions import Screenshot, FindAndClick, Wait, EndCycle
 
 
-def build_alliance_help_state(cfg: AppConfig) -> tuple[State, Context]:
+def build_checkstuck_state(cfg: AppConfig) -> tuple[State, Context]:
+    """Build a simple state that tries to click a Back/Close arrow.
+
+    Currently: capture -> find BackArrow.png in the top-left region -> click -> short wait -> end cycle.
+    """
     ctx = Context(
         window_title_substr=cfg.window_title_substr,
         templates_dir=cfg.templates_dir,
@@ -15,16 +19,16 @@ def build_alliance_help_state(cfg: AppConfig) -> tuple[State, Context]:
 
     steps = [
         GraphStep(
-            name="ClickHelp",
+            name="ClickBackArrow",
             actions=[
-                Screenshot(name="help_cap_1"),
-                Wait(name="wait_after_screenshot", seconds=2.0),
+                Screenshot(name="checkstuck_cap_1"),
                 FindAndClick(
-                    name="AllianceHelp",
-                    templates=["AllianceHelp.png"],
-                    region_pct=cfg.alliance_help_region_pct,
+                    name="BackArrow",
+                    templates=["BackArrow.png"],
+                    region_pct=getattr(cfg, "back_arrow_region_pct", (0.0, 0.0, 0.1, 0.1)),
                     threshold=cfg.match_threshold,
                 ),
+                Wait(name="wait_after_back", seconds=0.5),
             ],
             on_success="EndCycleStep",
             on_failure="EndCycleStep",
@@ -34,9 +38,11 @@ def build_alliance_help_state(cfg: AppConfig) -> tuple[State, Context]:
             actions=[
                 EndCycle(name="end_cycle"),
             ],
-            on_success="ClickHelp",
-            on_failure="ClickHelp",
+            on_success="ClickBackArrow",
+            on_failure="ClickBackArrow",
         ),
     ]
-    state = GraphState(steps=steps, start="ClickHelp", loop_sleep_s=0.05)
+
+    state = GraphState(steps=steps, start="ClickBackArrow", loop_sleep_s=0.05)
     return state, ctx
+

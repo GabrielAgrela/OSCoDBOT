@@ -158,6 +158,9 @@ window.addEventListener('DOMContentLoaded', () => {
   setInterval(metrics, 1500);
   fetchLogs();
   setInterval(fetchLogs, 1000);
+  // Refresh debug screenshot
+  refreshShot();
+  setInterval(refreshShot, 2000);
 });
 
 async function metrics() {
@@ -191,5 +194,34 @@ async function quitApp() {
     await fetch('/api/quit', { method: 'POST' });
   } catch (e) {
     // ignore; process will terminate shortly anyway
+  }
+}
+
+async function refreshShot() {
+  try {
+    const img = document.getElementById('shot-img');
+    const empty = document.getElementById('shot-empty');
+    if (!img || !empty) return;
+    const res = await fetch('/shots/latest', { cache: 'no-store' });
+    if (!res.ok) {
+      if (img.dataset.url) {
+        try { URL.revokeObjectURL(img.dataset.url); } catch (e) { /* ignore */ }
+        delete img.dataset.url;
+      }
+      img.style.display = 'none';
+      empty.style.display = 'block';
+      return;
+    }
+    const blob = await res.blob();
+    const url = URL.createObjectURL(blob);
+    if (img.dataset.url) {
+      try { URL.revokeObjectURL(img.dataset.url); } catch (e) { /* ignore */ }
+    }
+    img.src = url;
+    img.dataset.url = url;
+    img.style.display = 'block';
+    empty.style.display = 'none';
+  } catch (e) {
+    // ignore
   }
 }

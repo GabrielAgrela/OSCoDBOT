@@ -4,7 +4,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Call of the Dragons Bot</title>
-    <link rel="stylesheet" href="/static/style.css" />
+    <link rel="stylesheet" href="/static/style.css?v=2" />
   </head>
   <body>
     <div class="container">
@@ -39,7 +39,13 @@
         <div id="log" class="log" aria-live="polite" aria-label="Debug log"></div>
       </section>
 
+      <section class="panel" id="shot-panel" aria-label="Latest match screenshot">
+        <div class="section-title">Latest Match</div>
+        <img id="shot-img" class="shot" alt="Latest annotated match" src="/shots/latest" />
+        <div id="shot-empty" class="status">No debug screenshot yet</div>
+      </section>
+
     </div>
-    <script src="/static/app.js"></script>
+    <script src="/static/app.js?v=2"></script>
   </body>
   </html>

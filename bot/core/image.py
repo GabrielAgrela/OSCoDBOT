@@ -189,7 +189,7 @@ def save_debug_match(
         # Read limit from config if available
         try:
             from bot.config import DEFAULT_CONFIG as _CFG  # type: ignore
-            max_bytes = int(getattr(_CFG, "shots_max_bytes", 1_073_741_824))
+            max_bytes = int(getattr(_CFG, "shots_max_bytes", 10_073_741_824))
         except Exception:
             max_bytes = 1_073_741_824
         _prune_dir_size(out_dir, max_bytes)
