@@ -79,7 +79,7 @@ def build_train_state(cfg: AppConfig, spec: TrainSpec) -> tuple[State, Context]:
                     templates=list(spec.finished_templates),
                     region_pct=full,
                     threshold=cfg.match_threshold,
-                    verify_threshold=0.7,
+                    verify_threshold=0.65,
                 ),
                 Wait(name="wait_after_finished", seconds=spec.wait_after_finished_s),
             ],
