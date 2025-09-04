@@ -141,6 +141,9 @@ def save_debug_match(
     score: float,
     out_dir: Path,
     tag: str,
+    vscore: Optional[float] = None,
+    threshold: Optional[float] = None,
+    found: Optional[bool] = None,
 ) -> None:
     """Save annotated frame and template for a single match attempt.
 
@@ -165,13 +168,61 @@ def save_debug_match(
         vis = frame_bgr.copy()
         # Draw ROI rectangle in yellow
         cv2.rectangle(vis, (x0, y0), (x1, y1), (0, 255, 255), 2)
-        # Draw best-match rectangle in green
+        # Determine colors based on threshold logic
+        s_ok = (threshold is None) or (score >= float(threshold))
+        v_ok = True if vscore is None else ((threshold is None) or (float(vscore) >= float(threshold)))
+        both_ok = s_ok and v_ok
+        # If found flag explicitly provided, use it to force red on failure regardless of raw scores
+        if found is False:
+            rect_color = (0, 0, 255)
+            text_color_score = (0, 0, 255)
+            text_color_v = (0, 0, 255)
+        else:
+            rect_color = (0, 255, 0) if both_ok else (0, 0, 255)
+            text_color_score = (0, 255, 0) if s_ok else (0, 0, 255)
+            text_color_v = (0, 255, 0) if v_ok else (0, 0, 255)
+
+        # Draw best-match rectangle colored by combined status
         th, tw = template_bgr.shape[:2]
         mx, my = top_left_xy
-        cv2.rectangle(vis, (mx, my), (mx + tw, my + th), (0, 255, 0), 2)
-        # Put score text
-        cv2.putText(vis, f"{score:.3f}", (mx, max(0, my - 5)), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 1, cv2.LINE_AA)
-        out_path = out_dir / f"{ts}_match_{tag}_{score:.3f}.png"
+        cv2.rectangle(vis, (mx, my), (mx + tw, my + th), rect_color, 2)
+
+        # Put score and vscore texts inside the match rectangle, centered
+        font = cv2.FONT_HERSHEY_SIMPLEX
+        scale = 1.0
+        thick = 2
+        center_x = mx + tw // 2
+        center_y = my + th // 2
+        lines = [(f"s={score:.3f}", text_color_score)]
+        if vscore is not None and vscore > 0:
+            lines.append((f"v={float(vscore):.3f}", text_color_v))
+        sizes = []
+        baselines = []
+        for text, _col in lines:
+            (tw2, th2), bl = cv2.getTextSize(text, font, scale, thick)
+            sizes.append((tw2, th2))
+            baselines.append(bl)
+        spacing = int(8 * scale)
+        total_h = sum(h for _w, h in sizes) + spacing * (len(sizes) - 1 if sizes else 0)
+        top_y = int(center_y - total_h / 2)
+        img_h, img_w = vis.shape[:2]
+        acc_h = 0
+        for i, ((text, col), (tw2, th2)) in enumerate(zip(lines, sizes)):
+            # Baseline Y for this line
+            by = top_y + acc_h + th2
+            # Centered X for this line
+            lx = int(center_x - tw2 / 2)
+            # Clamp inside image bounds
+            lx = max(0, min(img_w - tw2, lx))
+            by = max(th2 + 1, min(img_h - 1, by))
+            cv2.putText(vis, text, (lx, by), font, scale, col, thick, cv2.LINE_AA)
+            acc_h += th2 + spacing
+
+        # Include both scores in filename for easier sorting
+        if vscore is not None and vscore > 0:
+            out_path = out_dir / f"{ts}_match_{tag}_{score:.3f}_v{float(vscore):.3f}.png"
+        else:
+            out_path = out_dir / f"{ts}_match_{tag}_{score:.3f}.png"
         try:
             cv2.imwrite(str(out_path), vis)
         except Exception:

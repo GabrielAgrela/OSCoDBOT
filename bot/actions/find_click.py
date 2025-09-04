@@ -105,7 +105,18 @@ class FindAndClick(Action):
                     try:
                         out_dir = getattr(ctx, "shots_dir", Path("debug_captures"))
                         tag = f"{self.name}_{Path(fname).stem}"
-                        save_debug_match(ctx.frame_bgr, roi_xywh, tpl, top_left_xy, score, out_dir, tag)
+                        save_debug_match(
+                            ctx.frame_bgr,
+                            roi_xywh,
+                            tpl,
+                            top_left_xy,
+                            score,
+                            out_dir,
+                            tag,
+                            vscore=(vscore if vscore > 0 else None),
+                            threshold=self.threshold,
+                            found=False,
+                        )
                     except Exception:
                         pass
                 continue
@@ -131,7 +142,18 @@ class FindAndClick(Action):
                 try:
                     out_dir = getattr(ctx, "shots_dir", Path("debug_captures"))
                     tag = f"{self.name}_{Path(fname).stem}"
-                    save_debug_match(ctx.frame_bgr, roi_xywh, tpl, top_left_xy, vscore or score, out_dir, tag)
+                    save_debug_match(
+                        ctx.frame_bgr,
+                        roi_xywh,
+                        tpl,
+                        top_left_xy,
+                        score,
+                        out_dir,
+                        tag,
+                        vscore=(vscore if vscore > 0 else None),
+                        threshold=self.threshold,
+                        found=True,
+                    )
                 except Exception:
                     pass
             return True
