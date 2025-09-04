@@ -8,6 +8,7 @@ import random
 import win32api
 import win32con
 import win32gui
+import win32process
 from bot.config import DEFAULT_CONFIG
 
 
@@ -60,13 +61,91 @@ def get_client_rect_screen(hwnd: int) -> WindowRect:
 
 
 def bring_to_front(hwnd: int) -> None:
+    """Best-effort to bring a window to the foreground and raise it in Z-order.
+
+    Windows has foreground lock rules that can block SetForegroundWindow from
+    stealing focus. This function uses several fallbacks:
+    - Restore if minimized, ensure shown
+    - Try SetForegroundWindow directly
+    - Temporarily toggle TOPMOST to raise in Z-order
+    - AttachThreadInput to the current foreground thread to allow activation
+    - ALT key tap heuristic to satisfy foreground permission
+    """
     try:
-        # Only restore if minimized; keep maximized state intact
-        if win32gui.IsIconic(hwnd):
-            win32gui.ShowWindow(hwnd, win32con.SW_RESTORE)
-        # Set foreground if different
-        if win32gui.GetForegroundWindow() != hwnd:
-            win32gui.SetForegroundWindow(hwnd)
+        # Restore if minimized and ensure visible
+        try:
+            if win32gui.IsIconic(hwnd):
+                win32gui.ShowWindow(hwnd, win32con.SW_RESTORE)
+            else:
+                # Make sure it's shown (won't steal focus)
+                win32gui.ShowWindow(hwnd, win32con.SW_SHOW)
+        except Exception:
+            pass
+
+        # Direct attempt
+        try:
+            if win32gui.GetForegroundWindow() != hwnd:
+                win32gui.SetForegroundWindow(hwnd)
+        except Exception:
+            pass
+
+        # If still not foreground, use fallbacks
+        try:
+            if win32gui.GetForegroundWindow() != hwnd:
+                # Raise in Z-order by toggling TOPMOST
+                try:
+                    win32gui.SetWindowPos(
+                        hwnd,
+                        win32con.HWND_TOPMOST,
+                        0,
+                        0,
+                        0,
+                        0,
+                        win32con.SWP_NOMOVE | win32con.SWP_NOSIZE | win32con.SWP_NOACTIVATE,
+                    )
+                    win32gui.SetWindowPos(
+                        hwnd,
+                        win32con.HWND_NOTOPMOST,
+                        0,
+                        0,
+                        0,
+                        0,
+                        win32con.SWP_NOMOVE | win32con.SWP_NOSIZE | win32con.SWP_NOACTIVATE,
+                    )
+                except Exception:
+                    pass
+
+                # ALT key tap heuristic
+                try:
+                    win32api.keybd_event(win32con.VK_MENU, 0, 0, 0)
+                    win32api.keybd_event(
+                        win32con.VK_MENU, 0, win32con.KEYEVENTF_KEYUP, 0
+                    )
+                except Exception:
+                    pass
+
+                # Attach to foreground thread and force activation
+                try:
+                    fg = win32gui.GetForegroundWindow()
+                    if fg and fg != hwnd:
+                        tid_fg, _ = win32process.GetWindowThreadProcessId(fg)
+                        tid_hwnd, _ = win32process.GetWindowThreadProcessId(hwnd)
+                        user32 = ctypes.windll.user32
+                        user32.AttachThreadInput(tid_fg, tid_hwnd, True)
+                        try:
+                            win32gui.BringWindowToTop(hwnd)
+                            user32.SetFocus(hwnd)
+                            user32.SetActiveWindow(hwnd)
+                            win32gui.SetForegroundWindow(hwnd)
+                        finally:
+                            try:
+                                user32.AttachThreadInput(tid_fg, tid_hwnd, False)
+                            except Exception:
+                                pass
+                except Exception:
+                    pass
+        except Exception:
+            pass
     except Exception:
         # Foreground rules may prevent focus; clicking still works with absolute coords
         pass
