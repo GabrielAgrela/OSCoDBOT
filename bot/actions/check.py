@@ -22,6 +22,7 @@ class CheckTemplate(Action):
     templates: Sequence[str]
     region_pct: tuple[float, float, float, float]
     threshold: float
+    verify_threshold: float = 0.85
 
     _tpl_cache: dict[str, tuple[np.ndarray, Optional[np.ndarray]]] = None  # type: ignore
 

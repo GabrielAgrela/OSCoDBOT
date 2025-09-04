@@ -69,6 +69,7 @@ def api_status():
                 "farm_wood": "farm",
                 "farm_ore": "ore",
                 "farm_gold": "gold",
+                "farm_mana": "mana",
             }
             for mode_key in _running.modes:
                 cd_key = alias.get(mode_key, mode_key)

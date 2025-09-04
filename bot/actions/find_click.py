@@ -31,6 +31,7 @@ class FindAndClick(Action):
     templates: Sequence[str]
     region_pct: tuple[float, float, float, float]
     threshold: float
+    verify_threshold: float = 0.85
 
     _tpl_cache: dict[str, np.ndarray] = None  # type: ignore
 
@@ -76,7 +77,7 @@ class FindAndClick(Action):
                 # Require verification score to exceed a stricter minimum
                 VERIFY_MIN = self.threshold
                 #if vscore is less than the verify threshold, set it to the threshold
-                if vscore < self.threshold:
+                if vscore < self.verify_threshold:
                     try:
                         logs.add(
                             f"[VerifyFail] tpl={fname} score={score:.3f} v={vscore:.3f} min={VERIFY_MIN:.2f}",

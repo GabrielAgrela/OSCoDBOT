@@ -12,6 +12,7 @@ from bot.states import (
     build_farm_wood_state,
     build_farm_ore_state,
     build_farm_gold_state,
+    build_farm_mana_state,
     build_alternating_state,
 )
 
@@ -33,6 +34,9 @@ class App:
         self.btn_gold = tk.Button(root, text="Start Farm Gold", width=20, command=self.on_toggle_farm_gold)
         self.btn_gold.pack(padx=12, pady=(0, 12))
 
+        self.btn_mana = tk.Button(root, text="Start Farm Mana", width=20, command=self.on_toggle_farm_mana)
+        self.btn_mana.pack(padx=12, pady=(0, 12))
+
         self.status = tk.StringVar(value="Idle")
         self.lbl = tk.Label(root, textvariable=self.status)
         self.lbl.pack(padx=12, pady=(0, 12))
@@ -52,6 +56,10 @@ class App:
         self._gold_machine: StateMachine | None = None
         self._gold_ctx: Context | None = None
         self._gold_running = False
+
+        self._mana_machine: StateMachine | None = None
+        self._mana_ctx: Context | None = None
+        self._mana_running = False
 
         self._combo_machine: StateMachine | None = None
         self._combo_ctx: Context | None = None
@@ -79,6 +87,10 @@ class App:
         gold_state, gold_ctx = build_farm_gold_state(cfg)
         self._gold_machine = StateMachine(gold_state)
         self._gold_ctx = gold_ctx
+
+        mana_state, mana_ctx = build_farm_mana_state(cfg)
+        self._mana_machine = StateMachine(mana_state)
+        self._mana_ctx = mana_ctx
 
     def on_toggle_scouts(self) -> None:
         if not self._machine or not self._ctx:
@@ -111,6 +123,13 @@ class App:
                 self.btn_farm.config(text="Start Farm Wood")
                 # Start combo: farm_wood then scouts
                 self._start_combo(("farm_wood", build_farm_wood_state), ("scouts", build_scouts_state))
+                return
+            # If Mana is running, upgrade to combo (Mana -> Scouts)
+            if self._mana_running and self._mana_machine and self._mana_ctx:
+                self._mana_machine.stop(self._mana_ctx)
+                self._mana_running = False
+                self.btn_mana.config(text="Start Farm Mana")
+                self._start_combo(("farm_mana", build_farm_mana_state), ("scouts", build_scouts_state))
                 return
             # If a different combo is running, stop it and start single scouts
             if self._combo_running:
@@ -146,6 +165,13 @@ class App:
             self.btn_gold.config(text="Start Farm Gold")
             self._start_combo(("farm_gold", build_farm_gold_state), ("farm_wood", build_farm_wood_state))
             return
+        # If Mana is running, upgrade to combo (Mana -> Farm Wood)
+        if self._mana_running and self._mana_machine and self._mana_ctx:
+            self._mana_machine.stop(self._mana_ctx)
+            self._mana_running = False
+            self.btn_mana.config(text="Start Farm Mana")
+            self._start_combo(("farm_mana", build_farm_mana_state), ("farm_wood", build_farm_wood_state))
+            return
         # If a combo is running
         if self._combo_running:
             if self._combo_modes and "farm_wood" in self._combo_modes:
@@ -179,6 +205,7 @@ class App:
         self.btn_farm.config(text="Start Farm Wood")
         self.btn_ore.config(text="Start Farm Ore")
         self.btn_gold.config(text="Start Farm Gold")
+        self.btn_mana.config(text="Start Farm Mana")
         self.status.set("Stopped")
 
     def _start_single_scouts(self) -> None:
@@ -199,6 +226,12 @@ class App:
         self.btn_gold.config(text="Stop Farm Gold")
         self.status.set("Farm gold running...")
 
+    def _start_single_mana(self) -> None:
+        self._mana_machine.start(self._mana_ctx)
+        self._mana_running = True
+        self.btn_mana.config(text="Stop Farm Mana")
+        self.status.set("Farm mana running...")
+
     def _start_combo(self, first: tuple[str, callable], second: tuple[str, callable]) -> None:
         # Build and start a fresh alternating state machine using the two builders
         cfg = DEFAULT_CONFIG
@@ -217,6 +250,8 @@ class App:
             self.btn_ore.config(text="Stop Farm Ore")
         if "farm_gold" in self._combo_modes:
             self.btn_gold.config(text="Stop Farm Gold")
+        if "farm_mana" in self._combo_modes:
+            self.btn_mana.config(text="Stop Farm Mana")
         self.status.set(f"Alternating: {self._combo_modes[0]} -> {self._combo_modes[1]}")
 
     def on_toggle_farm_ore(self) -> None:
@@ -279,6 +314,13 @@ class App:
             self.btn_ore.config(text="Start Farm Ore")
             self._start_combo(("farm_ore", build_farm_ore_state), ("farm_gold", build_farm_gold_state))
             return
+        # If Mana is running, upgrade to combo (Mana -> Gold)
+        if self._mana_running and self._mana_machine and self._mana_ctx:
+            self._mana_machine.stop(self._mana_ctx)
+            self._mana_running = False
+            self.btn_mana.config(text="Start Farm Mana")
+            self._start_combo(("farm_mana", build_farm_mana_state), ("farm_gold", build_farm_gold_state))
+            return
         # If a combo is running
         if self._combo_running:
             if self._combo_modes and "farm_gold" in self._combo_modes:
@@ -295,6 +337,55 @@ class App:
             self.status.set("Stopped")
         else:
             self._start_single_gold()
+
+    def on_toggle_farm_mana(self) -> None:
+        if not self._mana_machine or not self._mana_ctx:
+            messagebox.showerror("Error", "Farm mana machine not initialized")
+            return
+        # If Scouts is running, upgrade to combo (Scouts -> Mana)
+        if self._running and self._machine and self._ctx:
+            self._machine.stop(self._ctx)
+            self._running = False
+            self.btn.config(text="Start Scouts")
+            self._start_combo(("scouts", build_scouts_state), ("farm_mana", build_farm_mana_state))
+            return
+        # If Farm Wood is running, upgrade to combo (Wood -> Mana)
+        if self._farm_running and self._farm_machine and self._farm_ctx:
+            self._farm_machine.stop(self._farm_ctx)
+            self._farm_running = False
+            self.btn_farm.config(text="Start Farm Wood")
+            self._start_combo(("farm_wood", build_farm_wood_state), ("farm_mana", build_farm_mana_state))
+            return
+        # If Ore is running, upgrade to combo (Ore -> Mana)
+        if self._ore_running and self._ore_machine and self._ore_ctx:
+            self._ore_machine.stop(self._ore_ctx)
+            self._ore_running = False
+            self.btn_ore.config(text="Start Farm Ore")
+            self._start_combo(("farm_ore", build_farm_ore_state), ("farm_mana", build_farm_mana_state))
+            return
+        # If Gold is running, upgrade to combo (Gold -> Mana)
+        if self._gold_running and self._gold_machine and self._gold_ctx:
+            self._gold_machine.stop(self._gold_ctx)
+            self._gold_running = False
+            self.btn_gold.config(text="Start Farm Gold")
+            self._start_combo(("farm_gold", build_farm_gold_state), ("farm_mana", build_farm_mana_state))
+            return
+        # If a combo is running
+        if self._combo_running:
+            if self._combo_modes and "farm_mana" in self._combo_modes:
+                self._stop_combo()
+            else:
+                self._stop_combo()
+                self._start_single_mana()
+            return
+        # Toggle single Mana
+        if self._mana_running:
+            self._mana_machine.stop(self._mana_ctx)
+            self._mana_running = False
+            self.btn_mana.config(text="Start Farm Mana")
+            self.status.set("Stopped")
+        else:
+            self._start_single_mana()
 
 def run_app() -> None:
     root = tk.Tk()

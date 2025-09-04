@@ -2,6 +2,34 @@ let running = false;
 let paused = false;
 let lastLogId = 0;
 
+// Persist selected modes across visits
+const LS_SELECTED_KEY = 'modes.selected.v1';
+
+function saveSelectionLS(arr) {
+  try {
+    localStorage.setItem(LS_SELECTED_KEY, JSON.stringify(arr || []));
+  } catch (e) {
+    // ignore storage errors
+  }
+}
+
+function loadSelectionLS() {
+  try {
+    const raw = localStorage.getItem(LS_SELECTED_KEY);
+    const arr = JSON.parse(raw || '[]');
+    return Array.isArray(arr) ? arr : [];
+  } catch (e) {
+    return [];
+  }
+}
+
+function applySavedSelection() {
+  const saved = new Set(loadSelectionLS());
+  document.querySelectorAll('.mode-check').forEach(el => {
+    el.checked = saved.has(el.value);
+  });
+}
+
 function getSelection() {
   const checks = Array.from(document.querySelectorAll('.mode-check'));
   return checks.filter(c => c.checked).map(c => c.value);
@@ -19,6 +47,12 @@ function updateControls() {
   pauseBtn.disabled = !running;
   const plabel = document.getElementById('pause-label');
   plabel.textContent = paused ? 'Resume' : 'Pause';
+}
+
+function onSelectionChange() {
+  // Save selections whenever user toggles a mode
+  saveSelectionLS(getSelection());
+  updateControls();
 }
 
 async function status() {
@@ -149,7 +183,9 @@ window.addEventListener('DOMContentLoaded', () => {
   document.getElementById('pause').addEventListener('click', togglePause);
   const quitBtn = document.getElementById('quit');
   if (quitBtn) quitBtn.addEventListener('click', quitApp);
-  document.querySelectorAll('.mode-check').forEach(el => el.addEventListener('change', updateControls));
+  // Restore saved selection and wire up change handler to persist
+  applySavedSelection();
+  document.querySelectorAll('.mode-check').forEach(el => el.addEventListener('change', onSelectionChange));
   updateControls();
   status();
   setInterval(status, 1500);
@@ -160,7 +196,7 @@ window.addEventListener('DOMContentLoaded', () => {
   setInterval(fetchLogs, 1000);
   // Refresh debug screenshot
   refreshShot();
-  setInterval(refreshShot, 2000);
+  setInterval(refreshShot, 500);
 });
 
 async function metrics() {

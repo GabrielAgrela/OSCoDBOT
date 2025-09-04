@@ -19,7 +19,7 @@ class AppConfig:
     units_overview_region_pct: tuple[float, float, float, float] = (0.9, 0.15, 0.1, 0.6)  # right 20%
 
     #magifier region
-    magifier_region_pct: tuple[float, float, float, float] = (0.0, 0.73, 0.1, 0.15)
+    magifier_region_pct: tuple[float, float, float, float] = (0.0, 0.73, 0.1, 0.27)
 
     #alliance health region
     alliance_help_region_pct: tuple[float, float, float, float] = (0.65, 0.7, 0.2, 0.2)
@@ -28,7 +28,7 @@ class AppConfig:
     resource_search_selection_region_pct: tuple[float, float, float, float] = (0.1, 0.8, 0.8, 0.2)
 
     #resoure search button region
-    resource_search_button_region_pct: tuple[float, float, float, float] = (0.1, 0.63, 0.8, 0.2)
+    resource_search_button_region_pct: tuple[float, float, float, float] = (0.1, 0.63, 0.85, 0.2)
 
     #gather button region
     gather_button_region_pct: tuple[float, float, float, float] = (0.55, 0.6, 0.35, 0.3)
