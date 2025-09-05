@@ -48,7 +48,8 @@ class AppConfig:
     #action menu training region
     action_menu_training_region_pct: tuple[float, float, float, float] = (0.1, 0.3, 0.2, 0.4)
 
-    
+    #resource buy window close button region
+    resource_buy_window_close_button_region_pct: tuple[float, float, float, float] = (0.8, 0.05, 0.1, 0.2)
 
 
     # Assets directory

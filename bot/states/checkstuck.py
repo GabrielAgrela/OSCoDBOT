@@ -28,6 +28,20 @@ def build_checkstuck_state(cfg: AppConfig) -> tuple[State, Context]:
                     region_pct=getattr(cfg, "back_arrow_region_pct", (0.0, 0.0, 0.1, 0.1)),
                     threshold=cfg.match_threshold,
                 ),
+            ],
+            on_success="EndCycleStep",
+            on_failure="ClickCloseButton",
+        ),
+        GraphStep(
+            name="ClickCloseButton",
+            actions=[
+                Screenshot(name="checkstuck_cap_2"),
+                FindAndClick(
+                    name="CloseButton",
+                    templates=["CloseButton.png"],
+                    region_pct=cfg.resource_buy_window_close_button_region_pct,
+                    threshold=cfg.match_threshold,
+                ),
                 Wait(name="wait_after_back", seconds=0.5),
             ],
             on_success="EndCycleStep",
