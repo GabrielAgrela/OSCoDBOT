@@ -1,7 +1,7 @@
 from .scouts import build_scouts_state
 from .farm_wood import build_farm_wood_state
 from .farm_ore import build_farm_ore_state
-from .alternate import build_alternating_state, build_round_robin_state
+from .alternate import build_alternating_state, build_round_robin_state, build_with_checkstuck_state
 from .farm_gold import build_farm_gold_state
 from .farm_mana import build_farm_mana_state
 from .train import build_train_state
@@ -14,6 +14,7 @@ __all__ = [
     "build_farm_ore_state",
     "build_alternating_state",
     "build_round_robin_state",
+    "build_with_checkstuck_state",
     "build_farm_gold_state",
     "build_farm_mana_state",
     "build_train_state",

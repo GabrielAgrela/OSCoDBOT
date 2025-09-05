@@ -48,6 +48,7 @@ body { font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, A
 .log-line.info { color: var(--fg); opacity: .8; }
 .log-line.ok { color: #22c55e; }
 .log-line.err { color: #ef4444; }
+.log-line.pink { color: #ec4899; }
 
 /* Debug shot */
 #shot-panel { margin-top: 8px; }

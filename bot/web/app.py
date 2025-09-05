@@ -11,7 +11,7 @@ import threading as _threading
 
 from bot.config import DEFAULT_CONFIG, AppConfig
 from bot.core.state_machine import Context, State, StateMachine
-from bot.states import MODES as STATE_MODES, build_alternating_state, build_round_robin_state
+from bot.states import MODES as STATE_MODES, build_alternating_state, build_round_robin_state, build_with_checkstuck_state
 from bot.core import logs
 
 
@@ -105,13 +105,14 @@ def api_start():
     if len(selection) == 1:
         key = selection[0]
         label, builder = STATE_MODES[key]
-        state, ctx = builder(cfg)
+        # Wrap with checkstuck so it runs after each cycle; pass label for pink switch logs
+        state, ctx = build_with_checkstuck_state(cfg, builder, label=label)
         mach = StateMachine(state)
         mach.start(ctx)
         _running = Running(kind="single", modes=(key,), machine=mach, ctx=ctx)
         return jsonify({"ok": True, "kind": "single", "modes": selection})
     # 2+ selections: run round-robin in selection order
-    builders = [STATE_MODES[k][1] for k in selection]
+    builders = [(STATE_MODES[k][0], STATE_MODES[k][1]) for k in selection]
     state, ctx = build_round_robin_state(cfg, builders)
     mach = StateMachine(state)
     mach.start(ctx)

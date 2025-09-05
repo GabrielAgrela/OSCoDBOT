@@ -14,6 +14,7 @@ from bot.states import (
     build_farm_gold_state,
     build_farm_mana_state,
     build_alternating_state,
+    build_with_checkstuck_state,
 )
 
 
@@ -70,25 +71,25 @@ class App:
 
     def _build_machines(self) -> None:
         cfg = DEFAULT_CONFIG
-        scout_state, scout_ctx = build_scouts_state(cfg)
+        scout_state, scout_ctx = build_with_checkstuck_state(cfg, build_scouts_state, label="Scouts")
         self._machine = StateMachine(scout_state)
         self._ctx = scout_ctx
 
-        farm_state, farm_ctx = build_farm_wood_state(cfg)
+        farm_state, farm_ctx = build_with_checkstuck_state(cfg, build_farm_wood_state, label="Farm Wood")
         self._farm_machine = StateMachine(farm_state)
         self._farm_ctx = farm_ctx
 
-        ore_state, ore_ctx = build_farm_ore_state(cfg)
+        ore_state, ore_ctx = build_with_checkstuck_state(cfg, build_farm_ore_state, label="Farm Ore")
         self._ore_machine = StateMachine(ore_state)
         self._ore_ctx = ore_ctx
 
         # combo built on demand when user starts a second mode
 
-        gold_state, gold_ctx = build_farm_gold_state(cfg)
+        gold_state, gold_ctx = build_with_checkstuck_state(cfg, build_farm_gold_state, label="Farm Gold")
         self._gold_machine = StateMachine(gold_state)
         self._gold_ctx = gold_ctx
 
-        mana_state, mana_ctx = build_farm_mana_state(cfg)
+        mana_state, mana_ctx = build_with_checkstuck_state(cfg, build_farm_mana_state, label="Farm Mana")
         self._mana_machine = StateMachine(mana_state)
         self._mana_ctx = mana_ctx
 
@@ -235,7 +236,13 @@ class App:
     def _start_combo(self, first: tuple[str, callable], second: tuple[str, callable]) -> None:
         # Build and start a fresh alternating state machine using the two builders
         cfg = DEFAULT_CONFIG
-        combo_state, combo_ctx = build_alternating_state(cfg, first[1], second[1])
+        combo_state, combo_ctx = build_alternating_state(
+            cfg,
+            first[1],
+            second[1],
+            first_label=first[0].replace('_', ' ').title(),
+            second_label=second[0].replace('_', ' ').title(),
+        )
         self._combo_machine = StateMachine(combo_state)
         self._combo_ctx = combo_ctx
         self._combo_machine.start(self._combo_ctx)
