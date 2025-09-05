@@ -77,6 +77,7 @@ class AppConfig:
 
     # Game window sizing (client area)
     # When >0, attempt to resize the target window's CLIENT area to this size
+    force_window_resize: bool = True
     force_window_width: int = 1765
     force_window_height: int = 993
 
@@ -200,6 +201,7 @@ def make_config() -> AppConfig:
     ui_pin_to_game = _env_bool("UI_PIN_TO_GAME", True)
     ui_topmost = _env_bool("UI_TOPMOST", True)
     ui_frameless = _env_bool("UI_FRAMELESS", True)
+    force_window_resize = _env_bool("FORCE_WINDOW_RESIZE", True)
     try:
         force_window_width = int(os.getenv("FORCE_WINDOW_WIDTH", "1765").strip())
     except Exception:
@@ -250,6 +252,7 @@ def make_config() -> AppConfig:
         ui_pin_to_game=ui_pin_to_game,
         ui_topmost=ui_topmost,
         ui_frameless=ui_frameless,
+        force_window_resize=force_window_resize,
         force_window_width=force_window_width,
         force_window_height=force_window_height,
         farm_cooldown_min_s=cd_min,

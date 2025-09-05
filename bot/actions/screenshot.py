@@ -40,7 +40,11 @@ class Screenshot(Action):
             target_h = int(getattr(DEFAULT_CONFIG, 'force_window_height', 0))
         except Exception:
             target_w = target_h = 0
-        if target_w > 0 and target_h > 0:
+        try:
+            do_resize = bool(getattr(DEFAULT_CONFIG, 'force_window_resize', True))
+        except Exception:
+            do_resize = True
+        if do_resize and target_w > 0 and target_h > 0:
             try:
                 rect_now = get_client_rect_screen(hwnd)
                 if rect_now.width != target_w or rect_now.height != target_h:
@@ -59,6 +63,15 @@ class Screenshot(Action):
                 rect = get_client_rect_screen(hwnd)
         else:
             rect = get_client_rect_screen(hwnd)
+            # If resizing is disabled, log current resolution once for visibility
+            if not do_resize:
+                try:
+                    from bot.core import logs as _logs
+                    if not getattr(ctx, "_res_logged", False):
+                        _logs.add(f"[Resolution] Client area {rect.width}x{rect.height}", level="info")
+                        setattr(ctx, "_res_logged", True)
+                except Exception:
+                    pass
         if rect.width <= 0 or rect.height <= 0:
             return
 
