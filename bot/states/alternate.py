@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from typing import Callable, Tuple, List, Sequence
+import random
 
 from bot.config import AppConfig
 from bot.core.state_machine import Context, State, GraphState
@@ -11,7 +12,9 @@ class AlternatingState(State):
         self.name = "alternating_state"
         self._first = first
         self._second = second
+        # First pick is deterministic (use 'first'); subsequent iterations are random
         self._mode = 0  # 0 -> first, 1 -> second
+        self._first_pick_done = False
 
     def _run_one_cycle(self, st: State, ctx: Context) -> None:
         # If it's a GraphState, consider a cycle completed when we loop back to the start step
@@ -40,6 +43,16 @@ class AlternatingState(State):
         if getattr(ctx, "end_cycle", False):
             ctx.end_cycle = False
 
+    def run_once(self, ctx: Context) -> None:
+        # First iteration: deterministic order (first). Afterwards: random each iteration
+        if not getattr(self, "_first_pick_done", False):
+            st = self._first
+            self._first_pick_done = True
+        else:
+            self._mode = 0 if random.random() < 0.5 else 1
+            st = self._first if self._mode == 0 else self._second
+        self._run_one_cycle(st, ctx)
+
 
 class RoundRobinState(State):
     def __init__(self, states: Sequence[State]) -> None:
@@ -47,7 +60,10 @@ class RoundRobinState(State):
         self._states: List[State] = list(states)
         if not self._states:
             raise ValueError("RoundRobinState requires at least one state")
-        self._idx: int = 0
+        # First round uses the original order; subsequent rounds reshuffle
+        self._order: List[int] = list(range(len(self._states)))
+        self._pos: int = 0  # position within current order
+        self._first_round_done: bool = False
 
     def _run_one_cycle(self, st: State, ctx: Context) -> None:
         # Mirror AlternatingState semantics for cycle completion and end_cycle support
@@ -72,9 +88,22 @@ class RoundRobinState(State):
             ctx.end_cycle = False
 
     def run_once(self, ctx: Context) -> None:
-        st = self._states[self._idx]
+        # When completing a full round, keep first round deterministic, then reshuffle per round
+        if self._pos >= len(self._order):
+            self._pos = 0
+            if not self._first_round_done:
+                self._first_round_done = True
+            # For every round after the first, reshuffle order
+            if self._first_round_done:
+                self._order = list(range(len(self._states)))
+                random.shuffle(self._order)
+        st = self._states[self._order[self._pos]]
         self._run_one_cycle(st, ctx)
-        self._idx = (self._idx + 1) % len(self._states)
+        self._pos += 1
+
+    def _choose_next_mode(self) -> int:
+        # Helper for AlternatingState-style random choice where applicable
+        return 0 if random.random() < 0.5 else 1
 
 
 Builder = Callable[[AppConfig], Tuple[State, Context]]

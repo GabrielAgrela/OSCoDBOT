@@ -19,7 +19,7 @@ class AppConfig:
     units_overview_region_pct: tuple[float, float, float, float] = (0.9, 0.15, 0.1, 0.6)  # right 20%
 
     #magifier region
-    magifier_region_pct: tuple[float, float, float, float] = (0.0, 0.73, 0.1, 0.27)
+    magifier_region_pct: tuple[float, float, float, float] = (0.0, 0.65, 0.1, 0.35)
 
     #alliance health region
     alliance_help_region_pct: tuple[float, float, float, float] = (0.65, 0.7, 0.2, 0.2)
@@ -41,6 +41,14 @@ class AppConfig:
     
     #back arrow region
     back_arrow_region_pct: tuple[float, float, float, float] = (0.0, 0.0, 0.1, 0.1)
+
+    #action menu first half region
+    action_menu_first_half_region_pct: tuple[float, float, float, float] = (0.075, 0.1, 0.2, 0.4)
+
+    #action menu training region
+    action_menu_training_region_pct: tuple[float, float, float, float] = (0.1, 0.3, 0.2, 0.4)
+
+    
 
 
     # Assets directory
@@ -81,6 +89,13 @@ class AppConfig:
     # Farm cooldown window (seconds) for random delay between farm cycles
     farm_cooldown_min_s: int = 300    # 5 minutes
     farm_cooldown_max_s: int = 3600   # 1 hour
+
+    # Max concurrent armies/legions available for gathering
+    max_armies: int = 3
+
+    # Training cooldown window (seconds) for random delay when no troops to train
+    train_cooldown_min_s: int = 3600   # 1 hour
+    train_cooldown_max_s: int = 7200   # 2 hours
 
 
 def _load_env_file() -> None:
@@ -210,6 +225,18 @@ def make_config() -> AppConfig:
     cd_max = _env_duration_seconds("FARM_COOLDOWN_MAX", 3600)
     if cd_max < cd_min:
         cd_min, cd_max = cd_max, cd_min
+    # Training cooldown min/max
+    tcd_min = _env_duration_seconds("TRAIN_COOLDOWN_MIN", 3600)
+    tcd_max = _env_duration_seconds("TRAIN_COOLDOWN_MAX", 7200)
+    if tcd_max < tcd_min:
+        tcd_min, tcd_max = tcd_max, tcd_min
+    # Max armies from env
+    try:
+        max_armies = int(os.getenv("MAX_ARMIES", "3").strip())
+        if max_armies < 1:
+            max_armies = 1
+    except Exception:
+        max_armies = 3
     return AppConfig(
         window_title_substr=window_title,
         match_threshold=match_threshold,
@@ -227,6 +254,9 @@ def make_config() -> AppConfig:
         force_window_height=force_window_height,
         farm_cooldown_min_s=cd_min,
         farm_cooldown_max_s=cd_max,
+        max_armies=max_armies,
+        train_cooldown_min_s=tcd_min,
+        train_cooldown_max_s=tcd_max,
         log_to_file=log_to_file,
         log_file=log_file,
         log_max_bytes=log_max_bytes,

@@ -132,8 +132,6 @@ class StateMachine:
     def __init__(self, state: State) -> None:
         self._state = state
         self._thread: Optional[threading.Thread] = None
-        self._watchdog: Optional[threading.Thread] = None
-        self._watchdog_stop: threading.Event = threading.Event()
 
     def start(self, ctx: Context) -> None:
         if self._thread and self._thread.is_alive():
@@ -161,25 +159,12 @@ class StateMachine:
             pass
         self._thread = threading.Thread(target=self._run_loop, args=(ctx,), daemon=True)
         self._thread.start()
-        # Start watchdog thread for telemetry logging
-        try:
-            self._watchdog_stop.clear()
-            self._watchdog = threading.Thread(target=self._watchdog_loop, args=(ctx,), daemon=True)
-            self._watchdog.start()
-        except Exception:
-            pass
 
     def stop(self, ctx: Context) -> None:
         ctx.stop_event.set()
         # Clear pause so any waits unblock
         try:
             ctx.pause_event.clear()
-        except Exception:
-            pass
-        try:
-            self._watchdog_stop.set()
-            if self._watchdog and self._watchdog.is_alive():
-                self._watchdog.join(timeout=1.0)
         except Exception:
             pass
         if self._thread and self._thread.is_alive():
@@ -211,106 +196,6 @@ class StateMachine:
             except Exception:
                 pass
             self._state.run_once(ctx)
-
-    def _watchdog_loop(self, ctx: Context) -> None:
-        last_log = 0.0
-        last_perf = 0.0
-        prev_cpu_proc_time = time.process_time()
-        prev_cpu_wall = time.time()
-        while not self._watchdog_stop.is_set() and not ctx.stop_event.is_set():
-            now = time.time()
-            try:
-                # If paused, suppress stall recovery and mark as paused in logs periodically
-                try:
-                    if getattr(ctx, "pause_event", None) is not None and ctx.pause_event.is_set():
-                        if now - last_log >= 15.0:
-                            logs.add("[Watchdog] paused", level="info")
-                            last_log = now
-                        time.sleep(0.5)
-                        continue
-                except Exception:
-                    pass
-                since = max(0.0, now - float(getattr(ctx, "last_progress_ts", 0.0)))
-                if now - last_log >= 15.0:
-                    step = getattr(ctx, "current_graph_step", "") or getattr(ctx, "current_state_name", "?")
-                    act = getattr(ctx, "last_action_name", "")
-                    dur = float(getattr(ctx, "last_action_duration_s", 0.0))
-                    cyc = int(getattr(ctx, "cycle_count", 0))
-                    logs.add(f"[Watchdog] step={step} action={act} last_dur={dur:.2f}s since_progress={since:.1f}s cycles={cyc}")
-                    last_log = now
-                # Periodic perf telemetry
-                if now - last_perf >= 30.0:
-                    try:
-                        from . import perf as _perf
-                        m = _perf.get_process_metrics()
-                    except Exception:
-                        m = {}
-                    # CPU percent based on process_time delta and wall time
-                    try:
-                        curr_proc = time.process_time()
-                        curr_wall = now
-                        used = max(0.0, curr_proc - prev_cpu_proc_time)
-                        wall = max(0.001, curr_wall - prev_cpu_wall)
-                        cores = max(1, int(getattr(__import__('os'), 'cpu_count')() or 1))
-                        cpu_pct = max(0.0, min(100.0, (used / wall) * 100.0 / cores))
-                        prev_cpu_proc_time = curr_proc
-                        prev_cpu_wall = curr_wall
-                    except Exception:
-                        cpu_pct = 0.0
-                    try:
-                        import threading as _th
-                        thr = len(list(_th.enumerate()))
-                    except Exception:
-                        thr = 0
-                    try:
-                        rss_mb = float(m.get('rss_bytes', 0)) / (1024 * 1024)
-                        priv_mb = float(m.get('private_bytes', 0)) / (1024 * 1024)
-                        page_mb = float(m.get('pagefile_bytes', 0)) / (1024 * 1024)
-                        handles = int(m.get('handle_count', 0))
-                        gdi = int(m.get('gdi_count', 0))
-                        user = int(m.get('user_count', 0))
-                        cap_ok = bool(getattr(ctx, '_mss', None) is not None)
-                        grab_count = int(getattr(ctx, '_mss_grab_count', 0))
-                        wr = getattr(ctx, 'window_rect', (0,0,0,0))
-                        logs.add(
-                            (
-                                f"[Perf] rss={rss_mb:.1f}MB priv={priv_mb:.1f}MB page={page_mb:.1f}MB "
-                                f"handles={handles} gdi={gdi} user={user} thr={thr} cpu={cpu_pct:.1f}% "
-                                f"cap={'1' if cap_ok else '0'} grabs={grab_count} win={wr}"
-                            ),
-                            level="info",
-                        )
-                    except Exception:
-                        pass
-                    last_perf = now
-                if since > 45.0:
-                    # Proactively try to recover capture/window handles
-                    try:
-                        sct = getattr(ctx, "_mss", None)
-                        if sct is not None:
-                            try:
-                                sct.close()
-                            except Exception:
-                                pass
-                            try:
-                                setattr(ctx, "_mss", None)
-                            except Exception:
-                                pass
-                        logs.add("[WatchdogRecover] Reset capture handle after 45s stall", level="info")
-                    except Exception:
-                        pass
-                if since > 60.0:
-                    logs.add(f"[WatchdogStall] No progress for {since:.1f}s at step={step} action={act}", level="err")
-                    # Nudge the graph to end the current cycle so orchestrators can switch modes
-                    try:
-                        ctx.end_cycle = True
-                        # Force window re-discovery next cycle
-                        ctx.hwnd = None
-                    except Exception:
-                        pass
-            except Exception:
-                pass
-            time.sleep(2.0)
 
     # Pause/resume controls
     def pause(self, ctx: Context) -> None:

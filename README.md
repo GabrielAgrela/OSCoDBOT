@@ -79,6 +79,7 @@ Configuration
   - `MATCH_THRESHOLD=90%` (or `0.9`)
   - `CLICK_SNAP_BACK=true` to restore the mouse to its previous position after a click (`false` to leave it at the clicked point)
   - `FARM_COOLDOWN_MIN=5m` and `FARM_COOLDOWN_MAX=1h` to randomize the cooldown delay between farm cycles (supports `s`, `m`, `h`, `d`).
+  - `MAX_ARMIES=3` sets the number of concurrent gathering legions; farm flow will treat the cycle as full when the units overview shows this many icons (Mining/Going/Returning) and apply a cooldown.
 - Defaults are defined in `bot/config.py` if not provided via `.env`.
 - Templates: place PNGs under `assets/templates/` per the state definitions.
 

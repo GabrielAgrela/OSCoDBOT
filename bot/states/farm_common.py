@@ -13,6 +13,7 @@ from bot.actions import (
     ClickPercent,
     EndCycle,
     CheckTemplate,
+    CheckTemplatesCountAtLeast,
     CooldownGate,
     SetCooldown,
     SetCooldownRandom,
@@ -51,13 +52,77 @@ def build_farm_state(cfg: AppConfig, spec: FarmSpec) -> tuple[State, Context]:
     res_label = spec.resource_step_label
     res_templates = list(spec.resource_templates)
 
+    full = (0.0, 0.0, 1.0, 1.0)
+
     steps = [
         # Gate to skip running this state while in cooldown
         GraphStep(
             name="CooldownGate",
             actions=[CooldownGate(name=f"{key}_cooldown_gate", key=key)],
-            on_success="OpenMagnifier",
+            on_success="EnsureCityViewCheck",
             on_failure="CooldownGate",
+        ),
+        # Ensure we are in City view (MapButton appears only in city)
+        GraphStep(
+            name="EnsureCityViewCheck",
+            actions=[
+                Wait(name="wait_before_citycheck", seconds=1.0),
+                Screenshot(name=f"{key}_cap_citycheck"),
+                CheckTemplate(
+                    name="MapButtonCheck",
+                    templates=["MapButton.png", "MapIcon.png"],
+                    region_pct=cfg.magifier_region_pct,
+                    threshold=cfg.match_threshold,
+                ),
+            ],
+            on_success="CheckUnitsOverviewFull",
+            on_failure="ClickCityForCityView",
+        ),
+        GraphStep(
+            name="ClickCityForCityView",
+            actions=[
+                Screenshot(name=f"{key}_cap_city_click"),
+                FindAndClick(
+                    name="CityButton",
+                    templates=["CityButton.png", "CityIcon.png"],
+                    region_pct=cfg.magifier_region_pct,
+                    threshold=cfg.match_threshold,
+                ),
+                Wait(name="wait_after_city", seconds=1.5),
+            ],
+            on_success="CheckUnitsOverviewFull",
+            on_failure="CheckUnitsOverviewFull",
+        ),
+        GraphStep(
+            name="CheckUnitsOverviewFull",
+            actions=[
+                Wait(name="wait_before_units_check", seconds=1.0),
+                Screenshot(name=f"{key}_cap_units_overview"),
+                CheckTemplatesCountAtLeast(
+                    name="UnitsOverviewIcons",
+                    templates=["MiningIcon.png", "GoingIcon.png", "ReturningIcon.png"],
+                    region_pct=cfg.units_overview_region_pct,
+                    threshold=cfg.match_threshold,
+                    min_total=getattr(cfg, 'max_armies', 3),
+                ),
+            ],
+            on_success="CooldownAndEnd",
+            on_failure="CloseActionsMenu",
+        ),
+        GraphStep(
+            name="CloseActionsMenu",
+            actions=[
+                Screenshot(name=f"{key}_cap_actions_close"),
+                FindAndClick(
+                    name="ActionsMenuClose",
+                    templates=["ActionMenuClose.png"],
+                    region_pct=(0.0, 0.0, 1.0, 1.0),
+                    threshold=cfg.match_threshold,
+                ),
+                Wait(name="wait_after_actions_close", seconds=0.3),
+            ],
+            on_success="OpenMagnifier",
+            on_failure="OpenMagnifier",
         ),
         GraphStep(
             name="OpenMagnifier",
@@ -153,22 +218,8 @@ def build_farm_state(cfg: AppConfig, spec: FarmSpec) -> tuple[State, Context]:
                 ),
                 Wait(name="wait_after_gather", seconds=1.0),
             ],
-            on_success="CheckMarchFull",
+            on_success="CreateLegionsButton",
             on_failure="TapCenterThenGather",
-        ),
-        GraphStep(
-            name="CheckMarchFull",
-            actions=[
-                Screenshot(name=f"{key}_cap_marchfull_chk"),
-                CheckTemplate(
-                    name="MarchFullCheck",
-                    templates=["MarchFullButton.png", "FastMarchFullButton.png"],
-                    region_pct=cfg.create_legions_button_region_pct,
-                    threshold=cfg.match_threshold,
-                ),
-            ],
-            on_success="CooldownAndEnd",
-            on_failure="CreateLegionsButton",
         ),
         GraphStep(
             name="CooldownAndEnd",
@@ -180,8 +231,8 @@ def build_farm_state(cfg: AppConfig, spec: FarmSpec) -> tuple[State, Context]:
                     max_seconds=getattr(cfg, 'farm_cooldown_max_s', 3600),
                 ),
             ],
-            on_success="EndNoLegions",
-            on_failure="EndNoLegions",
+            on_success="CooldownGate",
+            on_failure="CooldownGate",
         ),
         GraphStep(
             name="TapCenterThenGather",
@@ -197,7 +248,7 @@ def build_farm_state(cfg: AppConfig, spec: FarmSpec) -> tuple[State, Context]:
                 ),
                 Wait(name="wait_after_gather_retry", seconds=spec.wait_after_gather_retry_s),
             ],
-            on_success="CheckMarchFull",
+            on_success="CreateLegionsButton",
             on_failure="EndNoLegions",
         ),
         GraphStep(
@@ -237,7 +288,7 @@ def build_farm_state(cfg: AppConfig, spec: FarmSpec) -> tuple[State, Context]:
                 ),
                 Wait(name="wait_after_march", seconds=1.0),
             ],
-            on_success="OpenMagnifier",
+            on_success="EnsureCityViewCheck",
             on_failure="EndNoLegions",
         ),
     ]
