@@ -100,7 +100,7 @@ def build_farm_state(cfg: AppConfig, spec: FarmSpec) -> tuple[State, Context]:
                 Screenshot(name=f"{key}_cap_units_overview"),
                 CheckTemplatesCountAtLeast(
                     name="UnitsOverviewIcons",
-                    templates=["MiningIcon.png", "GoingIcon.png", "ReturningIcon.png"],
+                    templates=["MiningIcon.png", "GoingIcon.png", "ReturningIcon.png", "BuildingIcon.png"],
                     region_pct=cfg.units_overview_region_pct,
                     threshold=cfg.match_threshold,
                     min_total=getattr(cfg, 'max_armies', 3),
