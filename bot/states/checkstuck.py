@@ -59,6 +59,20 @@ def build_checkstuck_state(cfg: AppConfig) -> tuple[State, Context]:
                 ),
             ],
             on_success="EndCycleStep",
+            on_failure="ChatCloseButton",
+        ),
+         GraphStep(
+            name="ChatCloseButton",
+            actions=[
+                Screenshot(name="checkstuck_cap_3"),
+                FindAndClick(
+                    name="ChatCloseButton",
+                    templates=["ChatCloseButton.png"],
+                    region_pct=(0.0, 0.0, 1.0, 1.0),
+                    threshold=cfg.match_threshold,
+                ),
+            ],
+            on_success="EndCycleStep",
             on_failure="EndCycleStep",
         ),
         GraphStep(

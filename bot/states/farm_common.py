@@ -59,39 +59,8 @@ def build_farm_state(cfg: AppConfig, spec: FarmSpec) -> tuple[State, Context]:
         GraphStep(
             name="CooldownGate",
             actions=[CooldownGate(name=f"{key}_cooldown_gate", key=key)],
-            on_success="EnsureCityViewCheck",
+            on_success="CheckUnitsOverviewFull",
             on_failure="CooldownGate",
-        ),
-        # Ensure we are in City view (MapButton appears only in city)
-        GraphStep(
-            name="EnsureCityViewCheck",
-            actions=[
-                Wait(name="wait_before_citycheck", seconds=1.0),
-                Screenshot(name=f"{key}_cap_citycheck"),
-                CheckTemplate(
-                    name="MapButtonCheck",
-                    templates=["MapButton.png", "MapIcon.png"],
-                    region_pct=cfg.magifier_region_pct,
-                    threshold=cfg.match_threshold,
-                ),
-            ],
-            on_success="CheckUnitsOverviewFull",
-            on_failure="ClickCityForCityView",
-        ),
-        GraphStep(
-            name="ClickCityForCityView",
-            actions=[
-                Screenshot(name=f"{key}_cap_city_click"),
-                FindAndClick(
-                    name="CityButton",
-                    templates=["CityButton.png", "CityIcon.png"],
-                    region_pct=cfg.magifier_region_pct,
-                    threshold=cfg.match_threshold,
-                ),
-                Wait(name="wait_after_city", seconds=1.5),
-            ],
-            on_success="CheckUnitsOverviewFull",
-            on_failure="CheckUnitsOverviewFull",
         ),
         GraphStep(
             name="CheckUnitsOverviewFull",
@@ -288,7 +257,7 @@ def build_farm_state(cfg: AppConfig, spec: FarmSpec) -> tuple[State, Context]:
                 ),
                 Wait(name="wait_after_march", seconds=1.0),
             ],
-            on_success="EnsureCityViewCheck",
+            on_success="CheckUnitsOverviewFull",
             on_failure="EndNoLegions",
         ),
     ]
