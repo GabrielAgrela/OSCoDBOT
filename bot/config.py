@@ -22,7 +22,7 @@ class AppConfig:
     magifier_region_pct: tuple[float, float, float, float] = (0.0, 0.65, 0.1, 0.35)
 
     #alliance health region
-    alliance_help_region_pct: tuple[float, float, float, float] = (0.65, 0.7, 0.2, 0.2)
+    alliance_help_region_pct: tuple[float, float, float, float] = (0.65, 0.7, 0.3, 0.3)
 
     #resource search selection region
     resource_search_selection_region_pct: tuple[float, float, float, float] = (0.1, 0.8, 0.8, 0.2)
