@@ -45,6 +45,20 @@ def build_checkstuck_state(cfg: AppConfig) -> tuple[State, Context]:
                 Wait(name="wait_after_back", seconds=0.5),
             ],
             on_success="EndCycleStep",
+            on_failure="ClickReconnectConfirm",
+        ),
+        GraphStep(
+            name="ClickReconnectConfirm",
+            actions=[
+                Screenshot(name="checkstuck_cap_3"),
+                FindAndClick(
+                    name="ReconnectConfirmButton",
+                    templates=["ReconnectConfirmButton.png"],
+                    region_pct=(0.0, 0.0, 1.0, 1.0),
+                    threshold=cfg.match_threshold,
+                ),
+            ],
+            on_success="EndCycleStep",
             on_failure="EndCycleStep",
         ),
         GraphStep(
