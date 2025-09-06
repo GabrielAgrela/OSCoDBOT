@@ -5,6 +5,7 @@ let lastLogId = 0;
 // Persist selected modes across visits
 const LS_SELECTED_KEY = 'modes.selected.v1';
 const LS_COUNTERS_KEY = 'counters.v1';
+const LS_SESSION_KEY = 'counters.session.v1';
 
 function saveSelectionLS(arr) {
   try {
@@ -40,6 +41,42 @@ function loadCountersLS() {
   } catch (e) {
     return {};
   }
+}
+
+// Session baseline helpers (since last Start)
+function saveSessionBaseline(obj) {
+  try {
+    const payload = {
+      troops_trained: parseInt(obj.troops_trained || 0, 10) || 0,
+      nodes_farmed: parseInt(obj.nodes_farmed || 0, 10) || 0,
+      alliance_helps: parseInt(obj.alliance_helps || 0, 10) || 0,
+      ts: Date.now(),
+    };
+    localStorage.setItem(LS_SESSION_KEY, JSON.stringify(payload));
+  } catch (e) {
+    // ignore
+  }
+}
+
+function loadSessionBaseline() {
+  try {
+    const raw = localStorage.getItem(LS_SESSION_KEY);
+    if (!raw) return null;
+    const obj = JSON.parse(raw);
+    if (!obj || typeof obj !== 'object') return null;
+    return {
+      troops_trained: parseInt(obj.troops_trained || 0, 10) || 0,
+      nodes_farmed: parseInt(obj.nodes_farmed || 0, 10) || 0,
+      alliance_helps: parseInt(obj.alliance_helps || 0, 10) || 0,
+      ts: parseInt(obj.ts || 0, 10) || 0,
+    };
+  } catch (e) {
+    return null;
+  }
+}
+
+function clearSessionBaseline() {
+  try { localStorage.removeItem(LS_SESSION_KEY); } catch (e) { /* ignore */ }
 }
 
 function applySavedSelection() {
@@ -98,7 +135,13 @@ async function status() {
     startBtn.classList.remove('loading');
     running = !!data.running;
     paused = !!data.paused;
-    if (!running) { el.textContent = 'Idle'; if (cdEl) cdEl.textContent = 'Cooldown: n/a'; updateControls(); return; }
+    if (!running) {
+      el.textContent = 'Idle';
+      if (cdEl) cdEl.textContent = 'Cooldown: n/a';
+      try { const sctr = document.getElementById('session-counters'); if (sctr) sctr.style.display = 'none'; } catch (e) {}
+      updateControls();
+      return;
+    }
     if (paused) { el.textContent = 'Paused'; /* still show cooldown below if any */ }
     // Show cooldowns below window size
     const cds = data.cooldowns || {};
@@ -180,6 +223,17 @@ async function start() {
       // Toggle to stop
       await fetch('/api/stop', { method: 'POST' });
     } else {
+      // Capture a session baseline before starting
+      try {
+        const c = loadCountersLS();
+        saveSessionBaseline({
+          troops_trained: c.troops_trained || 0,
+          nodes_farmed: c.nodes_farmed || 0,
+          alliance_helps: c.alliance_helps || 0,
+        });
+        const sctr = document.getElementById('session-counters');
+        if (sctr) { sctr.textContent = 'Since start: Troops +0 | Nodes +0 | Helps +0'; sctr.style.display = ''; }
+      } catch (e) { /* ignore */ }
       // Start with current selection
       const res = await fetch('/api/start', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
@@ -242,7 +296,7 @@ async function metrics() {
     const el = document.getElementById('window-dims');
     const ctr = document.getElementById('counters');
     if (!el) return;
-    if (!data.running) { el.textContent = 'Window: n/a'; return; }
+    if (!data.running) { el.textContent = 'Window: n/a'; try { const sctr = document.getElementById('session-counters'); if (sctr) sctr.style.display = 'none'; } catch (e) {} return; }
     const win = data.metrics && data.metrics.window;
     if (win && win.width > 0 && win.height > 0) {
       el.textContent = `Window: ${win.width}x${win.height}`;
@@ -259,6 +313,20 @@ async function metrics() {
         ctr.textContent = `Troops trained: ${trained} • Nodes farmed: ${farmed} • Helps: ${helps}`;
         // Persist to localStorage so values survive reruns and refreshes
         saveCountersLS({ troops_trained: trained, nodes_farmed: farmed, alliance_helps: helps });
+        // Update session delta since start, if baseline exists
+        try {
+          const sctr = document.getElementById('session-counters');
+          const base = loadSessionBaseline();
+          if (sctr && base) {
+            const dt = Math.max(0, trained - (base.troops_trained || 0));
+            const df = Math.max(0, farmed - (base.nodes_farmed || 0));
+            const dh = Math.max(0, helps - (base.alliance_helps || 0));
+            sctr.textContent = `Since start: Troops +${dt} | Nodes +${df} | Helps +${dh}`;
+            sctr.style.display = '';
+          } else if (sctr) {
+            sctr.style.display = 'none';
+          }
+        } catch (e) { /* ignore */ }
       }
     } catch (e) {
       // ignore UI update errors
