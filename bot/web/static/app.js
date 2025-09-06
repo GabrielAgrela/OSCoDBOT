@@ -4,6 +4,7 @@ let lastLogId = 0;
 
 // Persist selected modes across visits
 const LS_SELECTED_KEY = 'modes.selected.v1';
+const LS_COUNTERS_KEY = 'counters.v1';
 
 function saveSelectionLS(arr) {
   try {
@@ -23,11 +24,43 @@ function loadSelectionLS() {
   }
 }
 
+function saveCountersLS(obj) {
+  try {
+    localStorage.setItem(LS_COUNTERS_KEY, JSON.stringify(obj || {}));
+  } catch (e) {
+    // ignore storage errors
+  }
+}
+
+function loadCountersLS() {
+  try {
+    const raw = localStorage.getItem(LS_COUNTERS_KEY);
+    const obj = JSON.parse(raw || '{}');
+    return (obj && typeof obj === 'object') ? obj : {};
+  } catch (e) {
+    return {};
+  }
+}
+
 function applySavedSelection() {
   const saved = new Set(loadSelectionLS());
   document.querySelectorAll('.mode-check').forEach(el => {
     el.checked = saved.has(el.value);
   });
+}
+
+function applySavedCounters() {
+  try {
+    const ctr = document.getElementById('counters');
+    if (!ctr) return;
+    const c = loadCountersLS();
+    const trained = parseInt(c.troops_trained || 0, 10) || 0;
+    const farmed = parseInt(c.nodes_farmed || 0, 10) || 0;
+    const helps = parseInt(c.alliance_helps || 0, 10) || 0;
+    ctr.textContent = `Troops trained: ${trained} • Nodes farmed: ${farmed} • Helps: ${helps}`;
+  } catch (e) {
+    // ignore
+  }
 }
 
 function getSelection() {
@@ -185,6 +218,8 @@ window.addEventListener('DOMContentLoaded', () => {
   if (quitBtn) quitBtn.addEventListener('click', quitApp);
   // Restore saved selection and wire up change handler to persist
   applySavedSelection();
+  // Show saved counters immediately before first metrics fetch
+  applySavedCounters();
   document.querySelectorAll('.mode-check').forEach(el => el.addEventListener('change', onSelectionChange));
   updateControls();
   status();
@@ -205,6 +240,7 @@ async function metrics() {
     if (!res.ok) return;
     const data = await res.json();
     const el = document.getElementById('window-dims');
+    const ctr = document.getElementById('counters');
     if (!el) return;
     if (!data.running) { el.textContent = 'Window: n/a'; return; }
     const win = data.metrics && data.metrics.window;
@@ -212,6 +248,20 @@ async function metrics() {
       el.textContent = `Window: ${win.width}x${win.height}`;
     } else {
       el.textContent = 'Window: n/a';
+    }
+    // Update counters
+    try {
+      const c = (data.metrics && data.metrics.counters) || {};
+      if (ctr) {
+        const trained = parseInt(c.troops_trained || 0, 10) || 0;
+        const farmed = parseInt(c.nodes_farmed || 0, 10) || 0;
+        const helps = parseInt(c.alliance_helps || 0, 10) || 0;
+        ctr.textContent = `Troops trained: ${trained} • Nodes farmed: ${farmed} • Helps: ${helps}`;
+        // Persist to localStorage so values survive reruns and refreshes
+        saveCountersLS({ troops_trained: trained, nodes_farmed: farmed, alliance_helps: helps });
+      }
+    } catch (e) {
+      // ignore UI update errors
     }
   } catch (e) {
     // ignore

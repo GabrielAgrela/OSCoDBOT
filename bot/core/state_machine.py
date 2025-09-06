@@ -9,6 +9,7 @@ from typing import Optional, Protocol, Sequence, Dict, List
 import numpy as np
 from .window import bring_to_front, find_window_by_title_substr
 from . import logs
+from . import counters as _counters
 
 
 @dataclass
@@ -318,6 +319,19 @@ class GraphState:
                     pass
         # Transition
         success = bool(last_result)
+        # Increment global counters on success for notable steps
+        if success:
+            try:
+                # Map specific step names to counter keys
+                if step.name == "ClickTrain":
+                    _counters.inc("troops_trained", 1)
+                elif step.name == "March":
+                    _counters.inc("nodes_farmed", 1)
+                elif step.name == "ClickHelp":
+                    _counters.inc("alliance_helps", 1)
+            except Exception:
+                # Never let metrics affect control flow
+                pass
         next_name: Optional[str] = step.on_success if success else step.on_failure
         if next_name and next_name in self._steps:
             self._current = next_name

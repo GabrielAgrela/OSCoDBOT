@@ -13,6 +13,7 @@ from bot.config import DEFAULT_CONFIG, AppConfig
 from bot.core.state_machine import Context, State, StateMachine
 from bot.states import MODES as STATE_MODES, build_alternating_state, build_round_robin_state, build_with_checkstuck_state
 from bot.core import logs
+from bot.core import counters as _counters
 
 
 @dataclass
@@ -188,6 +189,11 @@ def api_metrics():
         w_left, w_top, w_width, w_height = int(wr[0]), int(wr[1]), int(wr[2]), int(wr[3])
     except Exception:
         w_left = w_top = w_width = w_height = 0
+    # Global counters snapshot
+    try:
+        counters = _counters.get_all()
+    except Exception:
+        counters = {}
     data = {
         "running": True,
         "kind": _running.kind,
@@ -200,6 +206,11 @@ def api_metrics():
             "last_action_duration_s": float(getattr(ctx, "last_action_duration_s", 0.0)),
             "cycle_count": int(getattr(ctx, "cycle_count", 0)),
             "since_last_progress_s": since,
+            "counters": {
+                "troops_trained": int(counters.get("troops_trained", 0)),
+                "nodes_farmed": int(counters.get("nodes_farmed", 0)),
+                "alliance_helps": int(counters.get("alliance_helps", 0)),
+            },
             "rss_mb": rss_mb,
             "private_mb": priv_mb,
             "pagefile_mb": page_mb,

@@ -21,7 +21,7 @@ def build_alliance_help_state(cfg: AppConfig) -> tuple[State, Context]:
                 Wait(name="wait_after_screenshot", seconds=2.0),
                 FindAndClick(
                     name="AllianceHelp",
-                    templates=["AllianceHelp.png"],
+                    templates=["AllianceHelp.png","AllianceHelpBig.png"],
                     region_pct=cfg.alliance_help_region_pct,
                     threshold=cfg.match_threshold,
                 ),
