@@ -257,8 +257,14 @@ def build_farm_state(cfg: AppConfig, spec: FarmSpec) -> tuple[State, Context]:
                 ),
                 Wait(name="wait_after_march", seconds=1.0),
             ],
-            on_success="CheckUnitsOverviewFull",
+            on_success="End",
             on_failure="EndNoLegions",
+        ),
+        GraphStep(
+            name="End",
+            actions=[EndCycle(name="end_cycle")],
+            on_failure="CooldownGate",
+            on_success="CooldownGate",
         ),
     ]
 

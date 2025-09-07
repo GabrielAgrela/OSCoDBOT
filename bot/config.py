@@ -92,6 +92,10 @@ class AppConfig:
     farm_cooldown_min_s: int = 300    # 5 minutes
     farm_cooldown_max_s: int = 3600   # 1 hour
 
+    # Alliance help cooldown window (seconds)
+    alliance_help_cooldown_min_s: int = 300   # 5 minutes
+    alliance_help_cooldown_max_s: int = 900   # 15 minutes
+
     # Max concurrent armies/legions available for gathering
     max_armies: int = 3
 
@@ -233,6 +237,11 @@ def make_config() -> AppConfig:
     tcd_max = _env_duration_seconds("TRAIN_COOLDOWN_MAX", 7200)
     if tcd_max < tcd_min:
         tcd_min, tcd_max = tcd_max, tcd_min
+    # Alliance help cooldown min/max
+    ah_min = _env_duration_seconds("ALLIANCE_HELP_COOLDOWN_MIN", 300)
+    ah_max = _env_duration_seconds("ALLIANCE_HELP_COOLDOWN_MAX", 900)
+    if ah_max < ah_min:
+        ah_min, ah_max = ah_max, ah_min
     # Max armies from env
     try:
         max_armies = int(os.getenv("MAX_ARMIES", "3").strip())
@@ -258,6 +267,8 @@ def make_config() -> AppConfig:
         force_window_height=force_window_height,
         farm_cooldown_min_s=cd_min,
         farm_cooldown_max_s=cd_max,
+        alliance_help_cooldown_min_s=ah_min,
+        alliance_help_cooldown_max_s=ah_max,
         max_armies=max_armies,
         train_cooldown_min_s=tcd_min,
         train_cooldown_max_s=tcd_max,

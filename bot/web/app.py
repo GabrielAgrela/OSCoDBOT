@@ -67,7 +67,7 @@ def api_status():
             now = _time.time()
             # Map UI mode keys to cooldown keys used by states
             alias = {
-                "farm_wood": "farm",
+                "farm_wood": "wood",
                 "farm_ore": "ore",
                 "farm_gold": "gold",
                 "farm_mana": "mana",
