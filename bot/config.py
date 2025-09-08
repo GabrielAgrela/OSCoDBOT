@@ -4,6 +4,7 @@ from dataclasses import dataclass
 import os
 from typing import Optional
 from pathlib import Path
+import sys
 
 
 @dataclass(frozen=True)
@@ -28,7 +29,7 @@ class AppConfig:
     resource_search_selection_region_pct: tuple[float, float, float, float] = (0.1, 0.8, 0.8, 0.2)
 
     #resoure search button region
-    resource_search_button_region_pct: tuple[float, float, float, float] = (0.1, 0.63, 0.85, 0.2)
+    resource_search_button_region_pct: tuple[float, float, float, float] = (0.1, 0.6, 0.85, 0.2)
 
     #gather button region
     gather_button_region_pct: tuple[float, float, float, float] = (0.55, 0.6, 0.35, 0.3)
@@ -107,27 +108,45 @@ class AppConfig:
 def _load_env_file() -> None:
     """Lightweight .env loader without external dependency.
 
+    Looks for .env next to the executable (CWD) and, when frozen
+    via PyInstaller, also inside the extracted bundle (sys._MEIPASS).
     Parses KEY=VALUE lines, ignoring comments and blanks.
     Does not overwrite existing environment variables.
     """
-    path = Path(".env")
-    if not path.exists():
-        return
+    candidates = [Path(".env")]
     try:
-        for raw in path.read_text(encoding="utf-8").splitlines():
-            line = raw.strip()
-            if not line or line.startswith("#"):
-                continue
-            if "=" not in line:
-                continue
-            key, val = line.split("=", 1)
-            key = key.strip()
-            val = val.strip().strip('"').strip("'")
-            if key and (key not in os.environ):
-                os.environ[key] = val
+        if getattr(sys, "frozen", False):
+            meipass = Path(getattr(sys, "_MEIPASS", ""))
+            if meipass:
+                candidates.append(meipass / ".env")
+            # Also consider .env next to the executable
+            try:
+                exe_dir = Path(sys.executable).resolve().parent
+                candidates.append(exe_dir / ".env")
+            except Exception:
+                pass
     except Exception:
-        # Ignore parsing errors; environment vars can still be set externally
         pass
+    for path in candidates:
+        try:
+            if not path.exists():
+                continue
+            for raw in path.read_text(encoding="utf-8").splitlines():
+                line = raw.strip()
+                if not line or line.startswith("#"):
+                    continue
+                if "=" not in line:
+                    continue
+                key, val = line.split("=", 1)
+                key = key.strip()
+                val = val.strip().strip('"').strip("'")
+                if key and (key not in os.environ):
+                    os.environ[key] = val
+            # Stop at first found .env
+            break
+        except Exception:
+            # Ignore parsing errors; environment vars can still be set externally
+            pass
 
 
 def _env_float(name: str, default: float) -> float:
@@ -202,6 +221,26 @@ def make_config() -> AppConfig:
         shots_max_bytes = int(os.getenv("SHOTS_MAX_BYTES", str(1_073_741_824)).strip())
     except Exception:
         shots_max_bytes = 1_073_741_824
+
+    # Resolve assets/templates paths for both dev and PyInstaller onefile/onedir
+    assets_dir = Path("assets")
+    templates_dir = Path("assets/templates")
+    try:
+        base_candidates = []
+        # Prefer bundled resources when frozen
+        if getattr(sys, "frozen", False):
+            base_candidates.append(Path(getattr(sys, "_MEIPASS", "")))
+        # Also consider the current working directory (next to the exe)
+        base_candidates.append(Path.cwd())
+        for base in base_candidates:
+            a = base / "assets"
+            t = a / "templates"
+            if a.exists() and t.exists():
+                assets_dir = a
+                templates_dir = t
+                break
+    except Exception:
+        pass
     use_webview = _env_bool("USE_WEBVIEW", True)
     ui_pin_to_game = _env_bool("UI_PIN_TO_GAME", True)
     ui_topmost = _env_bool("UI_TOPMOST", True)
@@ -258,6 +297,8 @@ def make_config() -> AppConfig:
         save_shots=save_shots,
         shots_dir=shots_dir,
         shots_max_bytes=shots_max_bytes,
+        assets_dir=assets_dir,
+        templates_dir=templates_dir,
         use_webview=use_webview,
         ui_pin_to_game=ui_pin_to_game,
         ui_topmost=ui_topmost,

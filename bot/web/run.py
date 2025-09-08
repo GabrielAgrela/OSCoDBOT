@@ -33,18 +33,17 @@ def _stick_left_loop(_window) -> None:
 
     Margins are specified as a percentage of the game client size
     to keep placement consistent across resolutions and DPI.
+    Reads values from DEFAULT_CONFIG each tick to reflect live updates.
     """
-    margin_left_pct = DEFAULT_CONFIG.ui_margin_left_pct
-    margin_top_pct = DEFAULT_CONFIG.ui_margin_top_pct
-    title_substr = DEFAULT_CONFIG.window_title_substr
     last_pos = (-9999, -9999)
     while True:
         try:
-            hwnd = find_window_by_title_substr(title_substr)
+            cfg = DEFAULT_CONFIG
+            hwnd = find_window_by_title_substr(cfg.window_title_substr)
             if hwnd:
                 rect = get_client_rect_screen(hwnd)
-                x = rect.left + int(rect.width * margin_left_pct)
-                y = rect.top + int(rect.height * margin_top_pct)
+                x = rect.left + int(rect.width * float(getattr(cfg, 'ui_margin_left_pct', 0.004)))
+                y = rect.top + int(rect.height * float(getattr(cfg, 'ui_margin_top_pct', 0.56)))
                 try:
                     # Move our UI window via Win32 to avoid backend thread-safety issues
                     ui_hwnd = find_window_by_title_substr("Call of the Dragons Bot")

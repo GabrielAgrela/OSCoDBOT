@@ -53,3 +53,14 @@ body { font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, A
 /* Debug shot */
 #shot-panel { margin-top: 8px; }
 .shot { display:block; width:100%; height:auto; border:1px solid var(--bord); border-radius:6px; background:#0b1220; max-height: 80vh; object-fit: contain; }
+/* Settings */
+.settings-form .row { display:flex; gap:6px; margin-top:6px; flex-wrap: wrap; }
+.settings-form label { display:flex; flex-direction: column; gap:3px; font-size:11px; }
+.settings-form input, .settings-form select { background:#1f2937; border:1px solid var(--bord); color: var(--fg); border-radius:6px; padding:4px 6px; font-size:12px; }
+/* Double range */
+.range-group { display:flex; flex-direction: column; gap:6px; flex: 1 1 100%; }
+.double-range { position: relative; height: 24px; display:flex; align-items:center; gap:8px; }
+.double-range input[type=range] { flex:1; appearance: none; height:4px; background:#243041; border-radius: 3px; outline: none; }
+.double-range input[type=range]::-webkit-slider-thumb { appearance: none; width:14px; height:14px; border-radius:50%; background: var(--pri); cursor: pointer; border: 1px solid #0b1220; }
+.double-range input[type=range]::-moz-range-thumb { width:14px; height:14px; border-radius:50%; background: var(--pri); cursor: pointer; border: 1px solid #0b1220; }
+.range-values { font-size: 11px; opacity:.9; }

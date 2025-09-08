@@ -270,6 +270,12 @@ window.addEventListener('DOMContentLoaded', () => {
   document.getElementById('pause').addEventListener('click', togglePause);
   const quitBtn = document.getElementById('quit');
   if (quitBtn) quitBtn.addEventListener('click', quitApp);
+  const settingsBtn = document.getElementById('settings-toggle');
+  if (settingsBtn) settingsBtn.addEventListener('click', toggleSettings);
+  const saveBtn = document.getElementById('save-settings');
+  if (saveBtn) saveBtn.addEventListener('click', saveSettings);
+  const saveRestartBtn = document.getElementById('save-restart');
+  if (saveRestartBtn) saveRestartBtn.addEventListener('click', saveAndQuit);
   // Restore saved selection and wire up change handler to persist
   applySavedSelection();
   // Show saved counters immediately before first metrics fetch
@@ -286,6 +292,10 @@ window.addEventListener('DOMContentLoaded', () => {
   // Refresh debug screenshot
   refreshShot();
   setInterval(refreshShot, 500);
+  // Load settings
+  loadSettings();
+  // Initialize range groups after first load
+  setTimeout(initAllRanges, 250);
 });
 
 async function metrics() {
@@ -378,4 +388,134 @@ async function refreshShot() {
   } catch (e) {
     // ignore
   }
+}
+
+function toggleSettings() {
+  try {
+    const pnl = document.getElementById('settings-panel');
+    if (!pnl) return;
+    pnl.style.display = (pnl.style.display === 'none' || !pnl.style.display) ? 'block' : 'none';
+  } catch (e) {}
+}
+
+async function loadSettings() {
+  try {
+    const res = await fetch('/api/env');
+    if (!res.ok) return;
+    const data = await res.json();
+    for (const [k, v] of Object.entries(data)) {
+      const el = document.getElementById('env_' + k);
+      if (!el) continue;
+      const val = String(v ?? '');
+      const tag = el.tagName.toUpperCase();
+      const type = (el.getAttribute('type') || '').toLowerCase();
+      if (type === 'checkbox') {
+        const truthy = /^(1|true|yes|on)$/i.test(val);
+        el.checked = truthy;
+      } else if (tag === 'SELECT') {
+        el.value = val;
+      } else {
+        el.value = val;
+      }
+    }
+    // Sync range groups from hidden env inputs
+    initAllRanges();
+  } catch (e) { /* ignore */ }
+}
+
+async function saveSettings() {
+  try {
+    const form = document.getElementById('settings-form');
+    if (!form) return;
+    const payload = {};
+    for (const el of form.querySelectorAll('input,select')) {
+      const id = el.id || '';
+      if (!id.startsWith('env_')) continue;
+      const key = id.substring(4);
+      const type = (el.getAttribute('type') || '').toLowerCase();
+      if (type === 'checkbox') {
+        payload[key] = el.checked ? 'true' : 'false';
+      } else {
+        payload[key] = el.value;
+      }
+    }
+    const res = await fetch('/api/env', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+    if (!res.ok) { alert('Failed to save settings'); return; }
+    const j = await res.json();
+    if (!j.ok) { alert('Failed to save settings'); return; }
+    try { await status(); } catch (e) {}
+    alert(j.reloaded ? 'Saved and applied.' : 'Saved.');
+  } catch (e) { alert('Failed to save settings'); }
+}
+
+async function saveAndQuit() {
+  await saveSettings();
+  await quitApp();
+}
+
+// Helpers for durations
+function parseDurationToSeconds(s) {
+  try {
+    if (!s) return 0;
+    const str = String(s).trim().toLowerCase();
+    if (str.endsWith('ms')) return Math.max(0, Math.floor(parseFloat(str.slice(0, -2)) / 1000));
+    if (str.endsWith('s')) return Math.max(0, Math.floor(parseFloat(str.slice(0, -1))));
+    if (str.endsWith('m')) return Math.max(0, Math.floor(parseFloat(str.slice(0, -1)) * 60));
+    if (str.endsWith('h')) return Math.max(0, Math.floor(parseFloat(str.slice(0, -1)) * 3600));
+    if (str.endsWith('d')) return Math.max(0, Math.floor(parseFloat(str.slice(0, -1)) * 86400));
+    return Math.max(0, Math.floor(parseFloat(str)));
+  } catch(e) { return 0; }
+}
+
+function formatSecondsToEnv(sec) {
+  const s = Math.max(0, Math.floor(sec || 0));
+  return `${s}s`;
+}
+
+function formatSecondsForLabel(sec) {
+  const s = Math.max(0, Math.floor(sec || 0));
+  if (s < 60) return `${s}s`;
+  if (s < 3600) return `${Math.round(s/60)}m`;
+  if (s < 86400) return `${Math.round(s/3600)}h`;
+  return `${Math.round(s/86400)}d`;
+}
+
+function initAllRanges() {
+  document.querySelectorAll('.range-group').forEach(initRangeGroup);
+}
+
+function initRangeGroup(group) {
+  try {
+    const root = (group instanceof Element) ? group : document.querySelector(group);
+    if (!root) return;
+    const minId = root.getAttribute('data-min-id');
+    const maxId = root.getAttribute('data-max-id');
+    if (!minId || !maxId) return;
+    const hiddenMin = document.getElementById(minId);
+    const hiddenMax = document.getElementById(maxId);
+    const sliderMin = root.querySelector('input.range-min');
+    const sliderMax = root.querySelector('input.range-max');
+    const labelMin = root.querySelector('.val-min');
+    const labelMax = root.querySelector('.val-max');
+    if (!hiddenMin || !hiddenMax || !sliderMin || !sliderMax) return;
+    const minSec = parseDurationToSeconds(hiddenMin.value || '0s');
+    const maxSec = parseDurationToSeconds(hiddenMax.value || '0s');
+    const bounds = { lo: parseInt(sliderMin.min||'0',10)||0, hi: parseInt(sliderMin.max||'86400',10)||86400 };
+    sliderMin.value = String(Math.min(Math.max(minSec, bounds.lo), bounds.hi));
+    sliderMax.value = String(Math.min(Math.max(maxSec, bounds.lo), bounds.hi));
+    function clamp() {
+      let a = parseInt(sliderMin.value||'0',10)||0;
+      let b = parseInt(sliderMax.value||'0',10)||0;
+      if (a > b) { const t=a; a=b; b=t; }
+      sliderMin.value = String(a);
+      sliderMax.value = String(b);
+      hiddenMin.value = formatSecondsToEnv(a);
+      hiddenMax.value = formatSecondsToEnv(b);
+      if (labelMin) labelMin.textContent = formatSecondsForLabel(a);
+      if (labelMax) labelMax.textContent = formatSecondsForLabel(b);
+    }
+    clamp();
+    sliderMin.addEventListener('input', clamp);
+    sliderMax.addEventListener('input', clamp);
+  } catch (e) { /* ignore */ }
 }
