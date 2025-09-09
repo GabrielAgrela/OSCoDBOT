@@ -30,6 +30,5 @@ MODES = {
     "farm_gold": ("Farm Gold", build_farm_gold_state),
     "farm_mana": ("Farm Mana", build_farm_mana_state),
     "train": ("Train", build_train_state),
-    "alliance_help": ("Alliance Help", build_alliance_help_state),
-    "checkstuck": ("Check Stuck", build_checkstuck_state),
+    "alliance_help": ("Alliance Help", build_alliance_help_state)
 }

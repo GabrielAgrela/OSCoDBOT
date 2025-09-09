@@ -72,6 +72,8 @@ class FindAndClick(Action):
                     patch = ctx.frame_bgr[my : my + th, mx : mx + tw]
                     if patch.shape[:2] == (th, tw):
                         vscore = masked_zncc(patch, tpl, tpl_mask)
+                        if vscore == 0.0:
+                            vscore = 1
                 except Exception:
                     vscore = 0.0
                 # Require verification score to exceed a stricter minimum

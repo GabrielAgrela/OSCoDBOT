@@ -144,9 +144,10 @@ def build_train_state(cfg: AppConfig, spec: TrainSpec) -> tuple[State, Context]:
                 Screenshot(name=f"{spec.key}_cap_done_notif"),
                 FindAndClick(
                     name="ActionDone",
-                    templates=["ActionDoneNotification.png"],
+                    templates=["ActionDoneNotification.png", "ActionProgressComplete.png"],
                     region_pct=cfg.action_menu_training_region_pct,
                     threshold=cfg.match_threshold,
+                    verify_threshold=0.95,
                 ),
                 Wait(name="wait_after_done", seconds=spec.wait_after_done_click_s),
             ],

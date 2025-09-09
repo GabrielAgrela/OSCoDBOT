@@ -480,6 +480,56 @@ function formatSecondsForLabel(sec) {
   return `${Math.round(s/86400)}d`;
 }
 
+// Non-linear slider mapping helpers for cooldown ranges
+const RANGE_MAX_SECONDS_DEFAULT = 3600; // 1 hour cap per group
+const SLIDER_STEPS_DEFAULT = 1000;      // visual ticks in the <input type=range>
+const SLIDER_PIVOT_DEFAULT = 0.30;      // fraction of slider reserved for seconds region
+const SLIDER_LINEAR_SEC_DEFAULT = 120;   // linear region covers 0..N seconds
+
+function clampNumber(n, lo, hi) {
+  return Math.min(hi, Math.max(lo, n));
+}
+
+// Map slider position (0..steps) to seconds (0..maxSec)
+function sliderToSeconds(val, cfg) {
+  const steps = cfg.steps ?? SLIDER_STEPS_DEFAULT;
+  const maxSec = cfg.maxSec ?? RANGE_MAX_SECONDS_DEFAULT;
+  const pivot = cfg.pivot ?? SLIDER_PIVOT_DEFAULT;
+  const linSec = cfg.linearSec ?? SLIDER_LINEAR_SEC_DEFAULT;
+  const p = clampNumber((parseInt(val || 0, 10) || 0) / steps, 0, 1);
+  const lin = clampNumber(linSec, 0, maxSec);
+  if (p <= pivot || pivot === 0) {
+    // Linear region: precise seconds control
+    const s = Math.round((p / (pivot || 1)) * lin);
+    return clampNumber(s, 0, maxSec);
+  } else {
+    // Exponential region for larger values
+    const q = (p - pivot) / (1 - pivot); // 0..1
+    const span = Math.max(1, maxSec - lin);
+    const s = lin + Math.round(Math.pow(span + 1, q) - 1);
+    return clampNumber(s, 0, maxSec);
+  }
+}
+
+// Map seconds (0..maxSec) back to slider ticks (0..steps)
+function secondsToSlider(sec, cfg) {
+  const steps = cfg.steps ?? SLIDER_STEPS_DEFAULT;
+  const maxSec = cfg.maxSec ?? RANGE_MAX_SECONDS_DEFAULT;
+  const pivot = cfg.pivot ?? SLIDER_PIVOT_DEFAULT;
+  const linSec = cfg.linearSec ?? SLIDER_LINEAR_SEC_DEFAULT;
+  const s = clampNumber(Math.floor(sec || 0), 0, maxSec);
+  const lin = clampNumber(linSec, 0, maxSec);
+  if (s <= lin || pivot === 0) {
+    const p = (lin === 0) ? 0 : (s / lin) * pivot; // 0..pivot
+    return Math.round(p * steps);
+  } else {
+    const span = Math.max(1, maxSec - lin);
+    const q = Math.log(s - lin + 1) / Math.log(span + 1); // 0..1
+    const p = pivot + q * (1 - pivot);
+    return Math.round(p * steps);
+  }
+}
+
 function initAllRanges() {
   document.querySelectorAll('.range-group').forEach(initRangeGroup);
 }
@@ -498,24 +548,37 @@ function initRangeGroup(group) {
     const labelMin = root.querySelector('.val-min');
     const labelMax = root.querySelector('.val-max');
     if (!hiddenMin || !hiddenMax || !sliderMin || !sliderMax) return;
-    const minSec = parseDurationToSeconds(hiddenMin.value || '0s');
-    const maxSec = parseDurationToSeconds(hiddenMax.value || '0s');
-    const bounds = { lo: parseInt(sliderMin.min||'0',10)||0, hi: parseInt(sliderMin.max||'86400',10)||86400 };
-    sliderMin.value = String(Math.min(Math.max(minSec, bounds.lo), bounds.hi));
-    sliderMax.value = String(Math.min(Math.max(maxSec, bounds.lo), bounds.hi));
-    function clamp() {
-      let a = parseInt(sliderMin.value||'0',10)||0;
-      let b = parseInt(sliderMax.value||'0',10)||0;
-      if (a > b) { const t=a; a=b; b=t; }
-      sliderMin.value = String(a);
-      sliderMax.value = String(b);
-      hiddenMin.value = formatSecondsToEnv(a);
-      hiddenMax.value = formatSecondsToEnv(b);
-      if (labelMin) labelMin.textContent = formatSecondsForLabel(a);
-      if (labelMax) labelMax.textContent = formatSecondsForLabel(b);
+    const cfg = {
+      maxSec: parseInt(root.getAttribute('data-max-seconds') || '3600', 10) || RANGE_MAX_SECONDS_DEFAULT,
+      steps: parseInt(sliderMin.getAttribute('max') || String(SLIDER_STEPS_DEFAULT), 10) || SLIDER_STEPS_DEFAULT,
+      pivot: parseFloat(root.getAttribute('data-pivot') || String(SLIDER_PIVOT_DEFAULT)),
+      linearSec: parseInt(root.getAttribute('data-linear-seconds') || String(SLIDER_LINEAR_SEC_DEFAULT), 10) || SLIDER_LINEAR_SEC_DEFAULT,
+    };
+    const minSec = clampNumber(parseDurationToSeconds(hiddenMin.value || '0s'), 0, cfg.maxSec);
+    const maxSec = clampNumber(parseDurationToSeconds(hiddenMax.value || '0s'), 0, cfg.maxSec);
+    sliderMin.value = String(secondsToSlider(minSec, cfg));
+    sliderMax.value = String(secondsToSlider(maxSec, cfg));
+
+    function syncHiddenAndLabels(aSec, bSec) {
+      hiddenMin.value = formatSecondsToEnv(aSec);
+      hiddenMax.value = formatSecondsToEnv(bSec);
+      if (labelMin) labelMin.textContent = formatSecondsForLabel(aSec);
+      if (labelMax) labelMax.textContent = formatSecondsForLabel(bSec);
     }
-    clamp();
-    sliderMin.addEventListener('input', clamp);
-    sliderMax.addEventListener('input', clamp);
+
+    function clampAndRender() {
+      let aSec = sliderToSeconds(sliderMin.value, cfg);
+      let bSec = sliderToSeconds(sliderMax.value, cfg);
+      if (aSec > bSec) { const t = aSec; aSec = bSec; bSec = t; }
+      // Update slider positions to reflect clamped seconds
+      sliderMin.value = String(secondsToSlider(aSec, cfg));
+      sliderMax.value = String(secondsToSlider(bSec, cfg));
+      syncHiddenAndLabels(aSec, bSec);
+    }
+
+    // Initial render
+    clampAndRender();
+    sliderMin.addEventListener('input', clampAndRender);
+    sliderMax.addEventListener('input', clampAndRender);
   } catch (e) { /* ignore */ }
 }

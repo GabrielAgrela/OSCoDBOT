@@ -87,6 +87,7 @@ def build_farm_state(cfg: AppConfig, spec: FarmSpec) -> tuple[State, Context]:
                     templates=["ActionMenuClose.png"],
                     region_pct=(0.0, 0.0, 1.0, 1.0),
                     threshold=cfg.match_threshold,
+                    verify_threshold=0,
                 ),
                 Wait(name="wait_after_actions_close", seconds=0.3),
             ],

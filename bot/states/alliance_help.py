@@ -25,7 +25,6 @@ def build_alliance_help_state(cfg: AppConfig) -> tuple[State, Context]:
             name="ClickHelp",
             actions=[
                 Screenshot(name="help_cap_1"),
-                Wait(name="wait_after_screenshot", seconds=2.0),
                 FindAndClick(
                     name="AllianceHelp",
                     templates=["AllianceHelp.png", "AllianceHelpBig.png"],

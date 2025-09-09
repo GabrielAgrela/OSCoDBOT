@@ -42,7 +42,6 @@ def build_checkstuck_state(cfg: AppConfig) -> tuple[State, Context]:
                     region_pct=cfg.resource_buy_window_close_button_region_pct,
                     threshold=cfg.match_threshold,
                 ),
-                Wait(name="wait_after_back", seconds=0.5),
             ],
             on_success="EndCycleStep",
             on_failure="ClickReconnectConfirm",
