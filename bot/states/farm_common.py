@@ -85,9 +85,9 @@ def build_farm_state(cfg: AppConfig, spec: FarmSpec) -> tuple[State, Context]:
                 FindAndClick(
                     name="ActionsMenuClose",
                     templates=["ActionMenuClose.png"],
-                    region_pct=(0.0, 0.0, 1.0, 1.0),
+                    region_pct=cfg.action_menu_close_region_pct,
                     threshold=cfg.match_threshold,
-                    verify_threshold=0,
+                    verify_threshold=0.8,
                 ),
                 Wait(name="wait_after_actions_close", seconds=0.3),
             ],
