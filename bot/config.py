@@ -63,6 +63,8 @@ class AppConfig:
     # Debugging
     save_shots: bool = False
     shots_dir: Path = Path("debug_captures")
+    # Dedicated folder for one-off start screenshots (not pruned)
+    start_shots_dir: Path = Path("start_captures")
     # Max total bytes to keep in shots_dir before pruning oldest files
     shots_max_bytes: int = 1_073_741_824  # 1 GiB
 
@@ -213,10 +215,15 @@ def make_config() -> AppConfig:
     save_shots = _env_bool("SAVE_SHOTS", False)
     shots_dir_env = os.getenv("SHOTS_DIR", "").strip()
     shots_dir = Path(shots_dir_env) if shots_dir_env else Path("debug_captures")
+    # Separate directory for Start screenshots (not subject to pruning)
+    start_shots_dir_env = os.getenv("START_SHOTS_DIR", "").strip()
+    start_shots_dir = Path(start_shots_dir_env) if start_shots_dir_env else Path("start_captures")
     # Make shots_dir absolute to avoid CWD differences between UI/server threads
     try:
         if not shots_dir.is_absolute():
             shots_dir = Path.cwd() / shots_dir
+        if not start_shots_dir.is_absolute():
+            start_shots_dir = Path.cwd() / start_shots_dir
     except Exception:
         # Fallback: leave as-is if cwd is unavailable
         pass
@@ -299,6 +306,7 @@ def make_config() -> AppConfig:
         click_snap_back=click_snap_back,
         save_shots=save_shots,
         shots_dir=shots_dir,
+        start_shots_dir=start_shots_dir,
         shots_max_bytes=shots_max_bytes,
         assets_dir=assets_dir,
         templates_dir=templates_dir,

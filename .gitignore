@@ -84,5 +84,6 @@ bot/web/__pycache__/*
 bot/__pycache__/*
 
 debug_captures/
+start_captures/
 
 bot.counters.json

@@ -7,8 +7,10 @@ from .farm_mana import build_farm_mana_state
 from .train import build_train_state
 from .alliance_help import build_alliance_help_state
 from .checkstuck import build_checkstuck_state
+from .farm_alliance_resource_center import build_farm_alliance_resource_center_state
 
 __all__ = [
+    "build_farm_alliance_resource_center_state",
     "build_scouts_state",
     "build_farm_wood_state",
     "build_farm_ore_state",
@@ -23,12 +25,14 @@ __all__ = [
 ]
 
 # Central registry of available modes for the UI (key -> (label, builder))
+# Central registry order is UI order; make this one first
 MODES = {
+    "farm_alliance_resource_center": ("Farm Alliance Resource Center", build_farm_alliance_resource_center_state),
     "scouts": ("Scouts", build_scouts_state),
     "farm_wood": ("Farm Wood", build_farm_wood_state),
     "farm_ore": ("Farm Ore", build_farm_ore_state),
     "farm_gold": ("Farm Gold", build_farm_gold_state),
     "farm_mana": ("Farm Mana", build_farm_mana_state),
     "train": ("Train", build_train_state),
-    "alliance_help": ("Alliance Help", build_alliance_help_state)
+    "alliance_help": ("Alliance Help", build_alliance_help_state),
 }

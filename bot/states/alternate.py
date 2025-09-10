@@ -119,7 +119,30 @@ class RoundRobinState(State):
         except Exception:
             pass
         self._run_one_cycle(st, ctx)
-        self._pos += 1
+        # Remove one-shot states after their first cycle so they don't run again
+        try:
+            if bool(getattr(st, "_one_shot", False)):
+                # Index in the underlying states list that we just executed
+                ridx = int(self._order[self._pos])
+                # Remove the state
+                try:
+                    del self._states[ridx]
+                except Exception:
+                    pass
+                # Rebuild order mapping (drop removed index; shift higher indices down)
+                new_order: List[int] = []
+                for idx in self._order:
+                    if idx == ridx:
+                        continue
+                    new_order.append(idx - 1 if idx > ridx else idx)
+                self._order = new_order
+                # Keep position pointing at the next item now occupying this slot
+                # Do not increment _pos here.
+            else:
+                self._pos += 1
+        except Exception:
+            # On any error, advance position normally
+            self._pos += 1
 
     def _choose_next_mode(self) -> int:
         # Helper for AlternatingState-style random choice where applicable

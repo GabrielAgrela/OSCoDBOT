@@ -14,6 +14,11 @@ from bot.core.state_machine import Context, State, StateMachine
 from bot.states import MODES as STATE_MODES, build_alternating_state, build_round_robin_state, build_with_checkstuck_state
 from bot.core import logs
 from bot.core import counters as _counters
+from bot.core.window import find_window_by_title_substr, get_client_rect_screen, bring_to_front
+import numpy as _np  # type: ignore
+import mss as _mss   # type: ignore
+from datetime import datetime
+from pathlib import Path as _Path
 
 
 @dataclass
@@ -311,13 +316,62 @@ def api_start():
     if not selection:
         return jsonify({"error": "No valid modes selected"}), 400
     _stop_running()
-    cfg = DEFAULT_CONFIG
+    cfg = DEFAULT_CONFIG    
+    def _save_start_shot(ctx: Context) -> None:
+        try:
+            hwnd = ctx.hwnd
+            if hwnd is None:
+                hwnd = find_window_by_title_substr(ctx.window_title_substr)
+                if hwnd is None:
+                    return
+                ctx.hwnd = hwnd
+            try:
+                bring_to_front(hwnd)
+            except Exception:
+                pass
+            rect = get_client_rect_screen(hwnd)
+            if rect.width <= 0 or rect.height <= 0:
+                return
+            mon = {"left": rect.left, "top": rect.top, "width": rect.width, "height": rect.height}
+            with _mss.mss() as sct:
+                raw = _np.array(sct.grab(mon))
+            img_bgr = raw[:, :, :3]
+            try:
+                out_dir = getattr(DEFAULT_CONFIG, 'start_shots_dir', _Path('start_captures'))
+            except Exception:
+                out_dir = _Path('start_captures')
+            folder = _Path(out_dir)
+            try:
+                folder.mkdir(parents=True, exist_ok=True)
+            except Exception:
+                pass
+            ts = datetime.now().strftime('%Y%m%d_%H%M%S')
+            out_path = folder / f"start_{ts}.png"
+            try:
+                import cv2 as _cv2  # type: ignore
+                _cv2.imwrite(str(out_path), img_bgr)
+            except Exception:
+                try:
+                    from PIL import Image as _Image  # type: ignore
+                    _Image.fromarray(img_bgr[:, :, ::-1]).save(str(out_path))
+                except Exception:
+                    return
+            try:
+                logs.add(f"[StartShot] Saved {out_path}", level='info')
+            except Exception:
+                pass
+        except Exception:
+            return
     if len(selection) == 1:
         key = selection[0]
         label, builder = STATE_MODES[key]
         # Wrap with checkstuck so it runs after each cycle; pass label for pink switch logs
         state, ctx = build_with_checkstuck_state(cfg, builder, label=label)
         mach = StateMachine(state)
+        try:
+            _save_start_shot(ctx)
+        except Exception:
+            pass
         mach.start(ctx)
         _running = Running(kind="single", modes=(key,), machine=mach, ctx=ctx)
         return jsonify({"ok": True, "kind": "single", "modes": selection})
@@ -325,6 +379,10 @@ def api_start():
     builders = [(STATE_MODES[k][0], STATE_MODES[k][1]) for k in selection]
     state, ctx = build_round_robin_state(cfg, builders)
     mach = StateMachine(state)
+    try:
+        _save_start_shot(ctx)
+    except Exception:
+        pass
     mach.start(ctx)
     _running = Running(kind="multi", modes=tuple(selection), machine=mach, ctx=ctx)
     return jsonify({"ok": True, "kind": "multi", "modes": selection})
@@ -530,3 +588,6 @@ def api_quit():
     except Exception:
         pass
     return jsonify({"ok": True})
+
+
+
