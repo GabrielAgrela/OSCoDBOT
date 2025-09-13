@@ -12,13 +12,21 @@ from bot.core import logs
 class Wait(Action):
     name: str
     seconds: float
+    # When True (default), add a small random extra delay to feel less robotic
+    randomize: bool = True
 
     def run(self, ctx: Context) -> None:
-        jitter = random.uniform(0.0, 2.0)
-        total = self.seconds + jitter
+        if bool(self.randomize):
+            jitter = random.uniform(0.0, 2.0)
+        else:
+            jitter = 0.0
+        total = max(0.0, float(self.seconds) + float(jitter))
         end_by = time.time() + total
         try:
-            print(f"[Wait] wait {total:.2f}s (base {self.seconds:.2f}s + {jitter:.2f}s)")
+            if jitter > 0.0:
+                print(f"[Wait] wait {total:.2f}s (base {self.seconds:.2f}s + {jitter:.2f}s)")
+            else:
+                print(f"[Wait] wait {total:.2f}s (no jitter)")
         except Exception:
             pass
         try:

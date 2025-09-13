@@ -4,6 +4,7 @@ from .farm_ore import build_farm_ore_state
 from .alternate import build_alternating_state, build_round_robin_state, build_with_checkstuck_state
 from .farm_gold import build_farm_gold_state
 from .farm_mana import build_farm_mana_state
+from .farm_gem import build_farm_gem_state
 from .train import build_train_state
 from .alliance_help import build_alliance_help_state
 from .checkstuck import build_checkstuck_state
@@ -22,6 +23,7 @@ __all__ = [
     "build_train_state",
     "build_alliance_help_state",
     "build_checkstuck_state",
+    "build_farm_gem_state",
 ]
 
 # Central registry of available modes for the UI (key -> (label, builder))
@@ -33,6 +35,7 @@ MODES = {
     "farm_ore": ("Farm Ore", build_farm_ore_state),
     "farm_gold": ("Farm Gold", build_farm_gold_state),
     "farm_mana": ("Farm Mana", build_farm_mana_state),
+    "farm_gem": ("Farm Gems", build_farm_gem_state),
     "train": ("Train", build_train_state),
     "alliance_help": ("Alliance Help", build_alliance_help_state),
 }

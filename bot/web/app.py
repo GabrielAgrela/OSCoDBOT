@@ -242,6 +242,7 @@ def api_status():
                 "farm_ore": "ore",
                 "farm_gold": "gold",
                 "farm_mana": "mana",
+                "farm_gem": "gems",
                 "train": "train",
             }
             for mode_key in _running.modes:
