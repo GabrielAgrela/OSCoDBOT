@@ -17,6 +17,10 @@ from bot.core.window import (
     get_monitor_rect_for_window,
 )
 from bot.config import DEFAULT_CONFIG
+try:
+    import win32gui  # type: ignore
+except Exception:  # pragma: no cover - optional at runtime
+    win32gui = None  # type: ignore
 
 
 @dataclass
@@ -47,13 +51,25 @@ class Screenshot(Action):
         if do_resize and target_w > 0 and target_h > 0:
             try:
                 rect_now = get_client_rect_screen(hwnd)
-                if rect_now.width != target_w or rect_now.height != target_h:
+                # Determine desired adjustments
+                needs_resize = (rect_now.width != target_w or rect_now.height != target_h)
+                try:
+                    is_zoomed = bool(win32gui and win32gui.IsZoomed(hwnd))  # maximized
+                except Exception:
+                    is_zoomed = False
+                # If size mismatch OR window is maximized, enforce target client size (also restores)
+                if needs_resize or is_zoomed:
                     set_window_client_size(hwnd, target_w, target_h)
-                    # Re-read rect after resize
                     rect_now = get_client_rect_screen(hwnd)
-                    # After resizing, position window at top-left of the current monitor
+                # Independently ensure position is top-left of its monitor, or if it was maximized
+                try:
+                    mon = get_monitor_rect_for_window(hwnd, work_area=False)
+                    needs_move = (rect_now.left != mon.left or rect_now.top != mon.top)
+                except Exception:
+                    mon = None
+                    needs_move = False
+                if (needs_move or is_zoomed) and mon is not None:
                     try:
-                        mon = get_monitor_rect_for_window(hwnd, work_area=False)
                         move_window_xy(hwnd, mon.left, mon.top)
                         rect_now = get_client_rect_screen(hwnd)
                     except Exception:
