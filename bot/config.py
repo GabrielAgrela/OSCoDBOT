@@ -82,6 +82,10 @@ class AppConfig:
     ui_topmost: bool = True           # Keep UI always on top
     ui_frameless: bool = True         # Try to remove title bar/borders
 
+    # Game launching
+    game_shortcut_path: Optional[Path] = None
+    game_launch_wait_s: float = 60.0
+
     # Game window sizing (client area)
     # When >0, attempt to resize the target window's CLIENT area to this size
     force_window_resize: bool = True
@@ -264,6 +268,25 @@ def make_config() -> AppConfig:
         force_window_height = int(os.getenv("FORCE_WINDOW_HEIGHT", "993").strip())
     except Exception:
         force_window_height = 993
+    game_shortcut_env = os.getenv("GAME_SHORTCUT_PATH", "").strip()
+    game_shortcut_path: Optional[Path]
+    if game_shortcut_env:
+        candidate = Path(game_shortcut_env)
+        try:
+            if not candidate.is_absolute():
+                candidate = Path.cwd() / candidate
+        except Exception:
+            pass
+        game_shortcut_path = candidate
+    else:
+        game_shortcut_path = None
+    try:
+        game_launch_wait_s = float(os.getenv("GAME_LAUNCH_WAIT", "60").strip())
+    except Exception:
+        game_launch_wait_s = 60.0
+    if game_launch_wait_s < 0:
+        game_launch_wait_s = 0.0
+
     log_to_file = _env_bool("LOG_TO_FILE", True)
     log_file_env = os.getenv("LOG_FILE", "").strip()
     log_file = Path(log_file_env) if log_file_env else Path("bot.log")
@@ -314,6 +337,8 @@ def make_config() -> AppConfig:
         ui_pin_to_game=ui_pin_to_game,
         ui_topmost=ui_topmost,
         ui_frameless=ui_frameless,
+        game_shortcut_path=game_shortcut_path,
+        game_launch_wait_s=game_launch_wait_s,
         force_window_resize=force_window_resize,
         force_window_width=force_window_width,
         force_window_height=force_window_height,

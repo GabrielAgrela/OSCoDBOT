@@ -317,7 +317,66 @@ def api_start():
     if not selection:
         return jsonify({"error": "No valid modes selected"}), 400
     _stop_running()
-    cfg = DEFAULT_CONFIG    
+    cfg = DEFAULT_CONFIG
+    target_title = getattr(cfg, "window_title_substr", "")
+    launch_wait_s = float(getattr(cfg, "game_launch_wait_s", 0.0) or 0.0)
+    initial_hwnd: Optional[int] = None
+
+    def _find_hwnd() -> Optional[int]:
+        try:
+            return find_window_by_title_substr(target_title)
+        except Exception:
+            return None
+
+    current_hwnd = _find_hwnd()
+    launched_game = False
+    if not current_hwnd:
+        shortcut = getattr(cfg, "game_shortcut_path", None)
+        if shortcut:
+            shortcut_path = str(shortcut)
+            shortcut_exists = False
+            try:
+                shortcut_exists = _Path(shortcut_path).exists()
+            except Exception:
+                pass
+            if not shortcut_exists:
+                return jsonify({"error": f"Game shortcut not found at {shortcut_path}"}), 400
+            try:
+                try:
+                    logs.add(f"[GameLaunch] Opening shortcut {shortcut_path}", level='info')
+                except Exception:
+                    pass
+                os.startfile(shortcut_path)  # type: ignore[attr-defined]
+                launched_game = True
+            except Exception as exc:
+                try:
+                    logs.add(f"[GameLaunch] Failed to open shortcut: {exc}", level='err')
+                except Exception:
+                    pass
+                return jsonify({"error": "Failed to launch game from shortcut"}), 500
+        else:
+            return jsonify({"error": "Game window not found and GAME_SHORTCUT_PATH is not set"}), 400
+    if launched_game:
+        if launch_wait_s > 0:
+            try:
+                logs.add(f"[GameLaunch] Waiting {launch_wait_s:.0f}s for game to load", level='info')
+            except Exception:
+                pass
+            end_time = _time.time() + launch_wait_s
+            while True:
+                remaining = end_time - _time.time()
+                if remaining <= 0:
+                    break
+                _time.sleep(min(1.0, remaining))
+        current_hwnd = _find_hwnd()
+        if not current_hwnd:
+            try:
+                logs.add("[GameLaunch] Game window not detected after launch wait", level='err')
+            except Exception:
+                pass
+            return jsonify({"error": "Game window not detected after launch wait"}), 500
+    initial_hwnd = current_hwnd
+
     def _save_start_shot(ctx: Context) -> None:
         try:
             hwnd = ctx.hwnd
@@ -369,6 +428,11 @@ def api_start():
         # Wrap with checkstuck so it runs after each cycle; pass label for pink switch logs
         state, ctx = build_with_checkstuck_state(cfg, builder, label=label)
         mach = StateMachine(state)
+        if initial_hwnd:
+            try:
+                ctx.hwnd = initial_hwnd
+            except Exception:
+                pass
         try:
             _save_start_shot(ctx)
         except Exception:
@@ -380,6 +444,11 @@ def api_start():
     builders = [(STATE_MODES[k][0], STATE_MODES[k][1]) for k in selection]
     state, ctx = build_round_robin_state(cfg, builders)
     mach = StateMachine(state)
+    if initial_hwnd:
+        try:
+            ctx.hwnd = initial_hwnd
+        except Exception:
+            pass
     try:
         _save_start_shot(ctx)
     except Exception:
