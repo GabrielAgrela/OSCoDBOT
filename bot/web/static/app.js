@@ -84,6 +84,7 @@ function applySavedSelection() {
   document.querySelectorAll('.mode-check').forEach(el => {
     el.checked = saved.has(el.value);
   });
+  refreshModeCardStates();
 }
 
 function applySavedCounters() {
@@ -98,6 +99,44 @@ function applySavedCounters() {
   } catch (e) {
     // ignore
   }
+}
+
+function refreshModeCardStates() {
+  document.querySelectorAll('.mode-pill').forEach(pill => {
+    const input = pill.querySelector('.mode-check');
+    const active = !!(input && input.checked);
+    pill.classList.toggle('selected', active);
+    pill.setAttribute('aria-checked', active ? 'true' : 'false');
+  });
+}
+
+function clearAllModes() {
+  document.querySelectorAll('.mode-check').forEach(el => { el.checked = false; });
+  onSelectionChange();
+  refreshModeCardStates();
+}
+
+function initModeInteractions() {
+  document.querySelectorAll('.mode-check').forEach(el => {
+    el.addEventListener('change', () => {
+      onSelectionChange();
+      refreshModeCardStates();
+    });
+  });
+  document.querySelectorAll('.mode-pill').forEach(pill => {
+    pill.addEventListener('keydown', evt => {
+      if (evt.key === 'Enter' || evt.key === ' ') {
+        evt.preventDefault();
+        const input = pill.querySelector('.mode-check');
+        if (input) {
+          input.checked = !input.checked;
+          input.dispatchEvent(new Event('change', { bubbles: true }));
+        }
+      }
+    });
+  });
+  const clearBtn = document.getElementById('mode-clear');
+  if (clearBtn) clearBtn.addEventListener('click', clearAllModes);
 }
 
 function getSelection() {
@@ -276,11 +315,10 @@ window.addEventListener('DOMContentLoaded', () => {
   if (saveBtn) saveBtn.addEventListener('click', saveSettings);
   const saveRestartBtn = document.getElementById('save-restart');
   if (saveRestartBtn) saveRestartBtn.addEventListener('click', saveAndQuit);
-  // Restore saved selection and wire up change handler to persist
+  initModeInteractions();
   applySavedSelection();
   // Show saved counters immediately before first metrics fetch
   applySavedCounters();
-  document.querySelectorAll('.mode-check').forEach(el => el.addEventListener('change', onSelectionChange));
   updateControls();
   status();
   setInterval(status, 1500);

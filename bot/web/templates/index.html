@@ -3,19 +3,30 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Call of the Dragons Bot</title>
+    <title>CoDBOT</title>
+    <link rel="icon" type="image/png" href="/static/favicon.png" />
     <link rel="stylesheet" href="/static/style.css?v=5" />
   </head>
   <body>
     <div class="container">
 
-      <section>
-        <div id="modes" class="modes">
+      <section id="shot-panel" class="panel primary" aria-label="Latest match screenshot">
+        <div class="section-title">Latest Match</div>
+        <img id="shot-img" class="shot" alt="Latest annotated match" src="/shots/latest" />
+        <div id="shot-empty" class="status">No debug screenshot yet</div>
+      </section>
+
+      <section class="mode-bar" aria-label="Mode selection">
+        <div class="mode-bar-header">
+          <span class="mode-bar-title">Modes</span>
+          <button type="button" id="mode-clear" class="btn subtle" title="Clear selection">Clear</button>
+        </div>
+        <div class="mode-pill-row" id="mode-list">
           {% for m in modes %}
-            <label class="mode" title="{{ m.label }}">
-              <input type="checkbox" class="mode-check" value="{{m.key}}" />
-              <span class="chip">{{ m.label }}</span>
-            </label>
+          <label class="mode-pill" title="{{ m.label }}" tabindex="0" role="checkbox" aria-checked="false">
+            <input type="checkbox" class="mode-check" value="{{ m.key }}" />
+            <span class="mode-pill-label">{{ m.label }}</span>
+          </label>
           {% endfor %}
         </div>
       </section>
@@ -105,12 +116,6 @@
           </form>
         </div>
         <div id="log" class="log" aria-live="polite" aria-label="Debug log"></div>
-      </section>
-
-      <section class="panel" id="shot-panel" aria-label="Latest match screenshot">
-        <div class="section-title">Latest Match</div>
-        <img id="shot-img" class="shot" alt="Latest annotated match" src="/shots/latest" />
-        <div id="shot-empty" class="status">No debug screenshot yet</div>
       </section>
 
     </div>

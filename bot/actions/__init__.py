@@ -1,6 +1,6 @@
 from .screenshot import Screenshot
 from .wait import Wait
-from .click import ClickPercent, ClickBelowLastMatchPercent, DragPercent, SpiralCameraMoveBlock, SpiralCameraMoveStep, ResetGemSpiral
+from .click import ClickPercent, DragPercent, SpiralCameraMoveStep, ResetGemSpiral
 from .find_click import FindAndClick
 from .end import EndCycle
 from .check import CheckTemplate, CheckTemplatesCountAtLeast
@@ -11,9 +11,7 @@ __all__ = [
     "Screenshot",
     "Wait",
     "ClickPercent",
-    "ClickBelowLastMatchPercent",
     "DragPercent",
-    "SpiralCameraMoveBlock",
     "SpiralCameraMoveStep",
     "ResetGemSpiral",
     "FindAndClick",

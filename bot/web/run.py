@@ -1,149 +1,45 @@
 from __future__ import annotations
 
+import socket
 import threading
 import time
 import webbrowser
 
-try:
-    import webview  # type: ignore
-    HAS_WEBVIEW = True
-except Exception:
-    webview = None  # type: ignore
-    HAS_WEBVIEW = False
-
-from bot.core.window import (
-    enable_dpi_awareness,
-    find_window_by_title_substr,
-    get_client_rect_screen,
-    set_window_topmost,
-    set_window_frameless,
-    move_window_xy,
-)
-from bot.config import DEFAULT_CONFIG
+from bot.core.window import enable_dpi_awareness
 from .app import app
 
 
-def _serve():
-    # Run Flask app in background thread
+def _serve() -> None:
+    """Run the Flask app in a background thread."""
     app.run(host="127.0.0.1", port=5000, debug=False, use_reloader=False, threaded=True)
 
 
-def _stick_left_loop(_window) -> None:
-    """Continuously pin the UI window to the left side of the game window.
-
-    Margins are specified as a percentage of the game client size
-    to keep placement consistent across resolutions and DPI.
-    Reads values from DEFAULT_CONFIG each tick to reflect live updates.
-    """
-    last_pos = (-9999, -9999)
-    while True:
+def _wait_for_server(host: str, port: int, timeout_s: float = 5.0) -> None:
+    """Best-effort wait until the development server is accepting connections."""
+    deadline = time.time() + max(0.0, timeout_s)
+    while time.time() < deadline:
         try:
-            cfg = DEFAULT_CONFIG
-            hwnd = find_window_by_title_substr(cfg.window_title_substr)
-            if hwnd:
-                rect = get_client_rect_screen(hwnd)
-                x = rect.left + int(rect.width * float(getattr(cfg, 'ui_margin_left_pct', 0.004)))
-                y = rect.top + int(rect.height * float(getattr(cfg, 'ui_margin_top_pct', 0.56)))
-                try:
-                    # Move our UI window via Win32 to avoid backend thread-safety issues
-                    ui_hwnd = find_window_by_title_substr("Call of the Dragons Bot")
-                    if ui_hwnd:
-                        # Only move when position changed to reduce churn
-                        if (x, y) != last_pos:
-                            move_window_xy(ui_hwnd, x, y)
-                            last_pos = (x, y)
-                except Exception:
-                    # Ignore issues and retry next tick
-                    pass
-        except Exception:
-            pass
-        time.sleep(1.5)
-
-
-def _ensure_topmost_loop(title_substr: str) -> None:
-    """Reassert our window as topmost periodically to stay visible over the game."""
-    while True:
-        try:
-            hwnd = find_window_by_title_substr(title_substr)
-            if hwnd:
-                try:
-                    set_window_topmost(hwnd, True)
-                except Exception:
-                    pass
-        except Exception:
-            pass
-        time.sleep(5.0)
-
-
-def _frameless_loop(title_substr: str) -> None:
-    """Try to remove title bar/borders from our UI window."""
-    while True:
-        try:
-            hwnd = find_window_by_title_substr(title_substr)
-            if hwnd:
-                try:
-                    set_window_frameless(hwnd, True)
-                except Exception:
-                    pass
-        except Exception:
-            pass
-        time.sleep(5.0)
+            with socket.create_connection((host, port), timeout=0.2):
+                return
+        except OSError:
+            time.sleep(0.1)
+    # Give up after timeout; browser open will still try to connect later.
 
 
 def run_app() -> None:
     enable_dpi_awareness()
-    t = threading.Thread(target=_serve, daemon=True)
-    t.start()
-    # Give server a moment to start
-    time.sleep(0.5)
-    url = "http://127.0.0.1:5000"
-    if HAS_WEBVIEW and DEFAULT_CONFIG.use_webview:
-        # Smaller, compact window to fit inside the game client. Prefer frameless/on_top if supported.
-        try:
-            window = webview.create_window(
-                "Call of the Dragons Bot",
-                url,
-                width=200,
-                height=400,
-                resizable=False,
-                on_top=True,
-                frameless=True,
-                easy_drag=True,
-            )
-        except TypeError:
-            # Older pywebview without these parameters
-            try:
-                window = webview.create_window(
-                    "Call of the Dragons Bot",
-                    url,
-                    width=65,
-                    height=365,
-                    resizable=False,
-                    on_top=True,
-                )
-            except TypeError:
-                window = webview.create_window(
-                    "Call of the Dragons Bot",
-                    url,
-                    width=30,
-                    height=375,
-                    resizable=False,
-                )
-        # Start a background thread to keep the window pinned to the left of the game window
-        if DEFAULT_CONFIG.ui_pin_to_game:
-            threading.Thread(target=_stick_left_loop, args=(window,), daemon=True).start()
-        # Reassert topmost via Win32 as a fallback and to keep it above if the game grabs focus
-        if DEFAULT_CONFIG.ui_topmost:
-            threading.Thread(target=_ensure_topmost_loop, args=("Call of the Dragons Bot",), daemon=True).start()
-        # Try to enforce frameless via Win32 if backend doesn't support frameless
-        if DEFAULT_CONFIG.ui_frameless:
-            threading.Thread(target=_frameless_loop, args=("Call of the Dragons Bot",), daemon=True).start()
-        webview.start()
-    else:
-        print("pywebview not installed. Opening in your default browser instead.\nInstall with: pip install pywebview")
-        webbrowser.open(url)
-        try:
-            while True:
-                time.sleep(3600)
-        except KeyboardInterrupt:
-            pass
+    thread = threading.Thread(target=_serve, daemon=True)
+    thread.start()
+    host, port = "127.0.0.1", 5000
+    _wait_for_server(host, port)
+    url = f"http://{host}:{port}"
+    print(f"Opening control panel at {url}")
+    try:
+        webbrowser.open(url, new=1, autoraise=True)
+    except Exception:
+        pass
+    try:
+        while thread.is_alive():
+            time.sleep(3600)
+    except KeyboardInterrupt:
+        pass

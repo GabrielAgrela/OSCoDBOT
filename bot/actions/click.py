@@ -34,29 +34,6 @@ class ClickPercent(Action):
         click_screen_xy(x, y)
 
 
-@dataclass
-class ClickBelowLastMatchPercent(Action):
-    name: str
-    down_pct: float  # fraction of window height (e.g., 0.05 for 5%)
-
-    def run(self, ctx: Context) -> None:
-        # Require a previous match to reference
-        lm = getattr(ctx, "last_match", None)
-        if lm is None:
-            return None
-        left, top, width, height = ctx.window_rect
-        if width <= 0 or height <= 0:
-            return None
-        # Base on last match screen center; move downward by down_pct of window height
-        sx, sy = lm.center_screen_xy
-        dy = int(max(-1.0, min(1.0, float(self.down_pct))) * height)
-        tx = max(left, min(left + width - 1, sx))
-        ty = max(top, min(top + height - 1, sy + dy))
-        if ctx.hwnd is not None:
-            bring_to_front(ctx.hwnd)
-            time.sleep(0.05)
-        click_screen_xy(tx, ty)
-
 
 @dataclass
 class DragPercent(Action):
@@ -131,83 +108,6 @@ class DragPercent(Action):
                 except Exception:
                     pass
 
-
-@dataclass
-class SpiralCameraMoveBlock(Action):
-    name: str
-    magnitude_x_pct: float = 0.25  # how far to drag horizontally (fraction of width)
-    magnitude_y_pct: float = 0.25  # how far to drag vertically (fraction of height)
-    pause_between_drags_s: float = 0.25
-
-    def run(self, ctx: Context) -> bool:
-        # Initialize spiral counters on context
-        block_len = int(getattr(ctx, "_gem_spiral_block_len", 1))
-        dir_idx = int(getattr(ctx, "_gem_spiral_dir_idx", 0))
-
-        # Directions order: left, up, right, down -> 0,1,2,3
-        dirs = [
-            (-abs(self.magnitude_x_pct), 0.0),
-            (0.0, -abs(self.magnitude_y_pct)),
-            (abs(self.magnitude_x_pct), 0.0),
-            (0.0, abs(self.magnitude_y_pct)),
-        ]
-        dx_pct, dy_pct = dirs[dir_idx % 4]
-
-        # Occasionally do one more or one less drag than the nominal block length (~25% chance)
-        eff_block_len = block_len
-        try:
-            if random.random() < 0.25:
-                eff_block_len = max(1, block_len + (1 if random.random() < 0.5 else -1))
-        except Exception:
-            pass
-
-        # Perform drags in the current direction. Start from center each time.
-        start_x = 0.50
-        start_y = 0.50
-        # Randomize how far to drag for this block (80%..120% per axis)
-        try:
-            sx_scale = 1.0 + random.uniform(-0.2, 0.2)
-            sy_scale = 1.0 + random.uniform(-0.2, 0.2)
-        except Exception:
-            sx_scale = sy_scale = 1.0
-        end_x = max(0.0, min(1.0, start_x + dx_pct * sx_scale))
-        end_y = max(0.0, min(1.0, start_y + dy_pct * sy_scale))
-        for _ in range(max(1, eff_block_len)):
-            # Randomize drag speed and path density
-            try:
-                dur = max(0.08, 0.18 * random.uniform(0.7, 1.4))
-            except Exception:
-                dur = 0.18
-            try:
-                steps = int(max(5, min(16, random.randint(7, 12))))
-            except Exception:
-                steps = 10
-            DragPercent(
-                name="drag",
-                from_x_pct=start_x,
-                from_y_pct=start_y,
-                to_x_pct=end_x,
-                to_y_pct=end_y,
-                duration_s=dur,
-                steps=steps,
-            ).run(ctx)
-            # Randomize inter-drag pause slightly
-            try:
-                pause = max(0.05, float(self.pause_between_drags_s) * random.uniform(0.7, 1.4))
-            except Exception:
-                pause = self.pause_between_drags_s
-            time.sleep(pause)
-
-        # Advance spiral: next direction and increase block length by 1 every move
-        try:
-            setattr(ctx, "_gem_spiral_dir_idx", (dir_idx + 1) % 4)
-        except Exception:
-            pass
-        try:
-            setattr(ctx, "_gem_spiral_block_len", block_len + 1)
-        except Exception:
-            pass
-        return True
 
 
 @dataclass

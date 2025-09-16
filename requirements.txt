@@ -4,4 +4,3 @@ mss
 Pillow
 pywin32
 Flask
-pywebview

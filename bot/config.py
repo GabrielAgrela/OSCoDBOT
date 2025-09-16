@@ -73,15 +73,6 @@ class AppConfig:
     click_snap_back: bool = True
 
     # UI placement (percent margins relative to game client size)
-    ui_margin_left_pct: float = 0.004  # ~0.4% of width
-    ui_margin_top_pct: float = 0.56    # ~56% of height
-
-    # UI behavior
-    use_webview: bool = True          # If false, open in browser instead of embedding
-    ui_pin_to_game: bool = True       # Keep UI window pinned near the game window
-    ui_topmost: bool = True           # Keep UI always on top
-    ui_frameless: bool = True         # Try to remove title bar/borders
-
     # Game launching
     game_shortcut_path: Optional[Path] = None
     game_launch_wait_s: float = 60.0
@@ -211,8 +202,6 @@ def make_config() -> AppConfig:
     _load_env_file()
     # Pull configurable values from env
     window_title = os.getenv("WINDOW_TITLE_SUBSTR", "Call of Dragons")
-    left_pct = _env_float("UI_MARGIN_LEFT_PCT", 0.004)
-    top_pct = _env_float("UI_MARGIN_TOP_PCT", 0.56)
     match_threshold = _env_float("MATCH_THRESHOLD", 0.85)
     verify_threshold = _env_float("VERIFY_THRESHOLD", 0.85)
     click_snap_back = _env_bool("CLICK_SNAP_BACK", True)
@@ -255,10 +244,6 @@ def make_config() -> AppConfig:
                 break
     except Exception:
         pass
-    use_webview = _env_bool("USE_WEBVIEW", True)
-    ui_pin_to_game = _env_bool("UI_PIN_TO_GAME", True)
-    ui_topmost = _env_bool("UI_TOPMOST", True)
-    ui_frameless = _env_bool("UI_FRAMELESS", True)
     force_window_resize = _env_bool("FORCE_WINDOW_RESIZE", True)
     try:
         force_window_width = int(os.getenv("FORCE_WINDOW_WIDTH", "1765").strip())
@@ -324,8 +309,6 @@ def make_config() -> AppConfig:
     return AppConfig(
         window_title_substr=window_title,
         match_threshold=match_threshold,
-        ui_margin_left_pct=left_pct,
-        ui_margin_top_pct=top_pct,
         click_snap_back=click_snap_back,
         save_shots=save_shots,
         shots_dir=shots_dir,
@@ -333,10 +316,6 @@ def make_config() -> AppConfig:
         shots_max_bytes=shots_max_bytes,
         assets_dir=assets_dir,
         templates_dir=templates_dir,
-        use_webview=use_webview,
-        ui_pin_to_game=ui_pin_to_game,
-        ui_topmost=ui_topmost,
-        ui_frameless=ui_frameless,
         game_shortcut_path=game_shortcut_path,
         game_launch_wait_s=game_launch_wait_s,
         force_window_resize=force_window_resize,

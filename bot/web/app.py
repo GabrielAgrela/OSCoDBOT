@@ -29,6 +29,106 @@ class Running:
     ctx: Optional[Context]
 
 
+MODE_META = {
+    "farm_alliance_resource_center": {
+        "category": "Alliance & Events",
+        "badge": "Alliance",
+        "description": "Navigates the alliance territory panel to queue Alliance Resource Center runs with fallback gather steps.",
+        "tags": ["alliance", "resource", "center", "event"],
+    },
+    "scouts": {
+        "category": "Support & Utilities",
+        "badge": "Support",
+        "description": "Keeps scouts exploring by clicking idle icons and reissuing explore orders automatically.",
+        "tags": ["scout", "explore", "support"],
+    },
+    "farm_wood": {
+        "category": "Primary Farming",
+        "badge": "Loop",
+        "description": "Searches for wood nodes, manages legion dispatch, and respects cooldown gates when armies are full.",
+        "tags": ["farm", "wood", "gather"],
+    },
+    "farm_ore": {
+        "category": "Primary Farming",
+        "badge": "Loop",
+        "description": "Targets ore deposits, downgrades search level when needed, and handles gather and march flows.",
+        "tags": ["farm", "ore", "gather"],
+    },
+    "farm_gold": {
+        "category": "Primary Farming",
+        "badge": "Loop",
+        "description": "Finds gold sources and sends available legions through gather, create, and march steps with retries.",
+        "tags": ["farm", "gold", "gather"],
+    },
+    "farm_mana": {
+        "category": "Primary Farming",
+        "badge": "Loop",
+        "description": "Automates mana crystal farming using the standard magnifier -> search -> gather flow.",
+        "tags": ["farm", "mana", "resource"],
+    },
+    "farm_gem": {
+        "category": "Primary Farming",
+        "badge": "Loop",
+        "description": "Sweeps the map with spiral camera drags to locate gem mines before dispatching legions.",
+        "tags": ["farm", "gems", "camera"],
+    },
+    "train": {
+        "category": "Support & Utilities",
+        "badge": "Support",
+        "description": "Keeps troop training queues full by cycling the action menu and respecting configurable cooldowns.",
+        "tags": ["train", "troops", "barracks"],
+    },
+    "alliance_help": {
+        "category": "Support & Utilities",
+        "badge": "Support",
+        "description": "Clicks the alliance help button whenever it is available and idles until the next cooldown.",
+        "tags": ["alliance", "help", "support"],
+    },
+}
+
+CATEGORY_ORDER = [
+    "Primary Farming",
+    "Support & Utilities",
+    "Alliance & Events",
+]
+
+
+def _build_mode_payload() -> List[Dict[str, object]]:
+    payload: List[Dict[str, object]] = []
+    for key, (label, _builder) in STATE_MODES.items():
+        meta = MODE_META.get(key, {})
+        tags = list(meta.get("tags", []))
+        if not tags:
+            tags = key.replace('_', ' ').split()
+        payload.append(
+            {
+                "key": key,
+                "label": label,
+                "description": meta.get("description", "Automation flow."),
+                "category": meta.get("category", "Other"),
+                "badge": meta.get("badge", ""),
+                "tags": tags,
+            }
+        )
+    return payload
+
+
+def _group_modes(modes: List[Dict[str, object]]) -> List[Dict[str, object]]:
+    grouped: Dict[str, List[Dict[str, object]]] = {}
+    for item in modes:
+        cat = str(item.get("category") or "Other")
+        grouped.setdefault(cat, []).append(item)
+    def _sort_items(items: List[Dict[str, object]]) -> List[Dict[str, object]]:
+        return sorted(items, key=lambda m: str(m.get("label", "")).lower())
+    ordered: List[Dict[str, object]] = []
+    for cat in CATEGORY_ORDER:
+        if cat in grouped:
+            ordered.append({"name": cat, "modes": _sort_items(grouped.pop(cat))})
+    for cat in sorted(grouped.keys()):
+        ordered.append({"name": cat, "modes": _sort_items(grouped[cat])})
+    return ordered
+
+
 app = Flask(__name__, template_folder="templates", static_folder="static")
 # Suppress Flask/Werkzeug request logs in console
 logging.getLogger("werkzeug").setLevel(logging.ERROR)
@@ -116,16 +216,10 @@ def _env_current_values() -> Dict[str, str]:
         "WINDOW_TITLE_SUBSTR": get("WINDOW_TITLE_SUBSTR", cfg.window_title_substr),
         "MATCH_THRESHOLD": get("MATCH_THRESHOLD", f"{cfg.match_threshold:.2f}"),
         "VERIFY_THRESHOLD": get("VERIFY_THRESHOLD", "0.85"),
-        "UI_MARGIN_LEFT_PCT": get("UI_MARGIN_LEFT_PCT", pct(cfg.ui_margin_left_pct)),
-        "UI_MARGIN_TOP_PCT": get("UI_MARGIN_TOP_PCT", pct(cfg.ui_margin_top_pct)),
         "CLICK_SNAP_BACK": get("CLICK_SNAP_BACK", b(cfg.click_snap_back)),
         "SAVE_SHOTS": get("SAVE_SHOTS", b(cfg.save_shots)),
         "SHOTS_DIR": get("SHOTS_DIR", str(getattr(cfg, 'shots_dir', 'debug_captures'))),
         "SHOTS_MAX_BYTES": get("SHOTS_MAX_BYTES", str(getattr(cfg, 'shots_max_bytes', 1073741824))),
-        "USE_WEBVIEW": get("USE_WEBVIEW", b(cfg.use_webview)),
-        "UI_PIN_TO_GAME": get("UI_PIN_TO_GAME", b(cfg.ui_pin_to_game)),
-        "UI_TOPMOST": get("UI_TOPMOST", b(cfg.ui_topmost)),
-        "UI_FRAMELESS": get("UI_FRAMELESS", b(cfg.ui_frameless)),
         "FORCE_WINDOW_RESIZE": get("FORCE_WINDOW_RESIZE", b(cfg.force_window_resize)),
         "FORCE_WINDOW_WIDTH": get("FORCE_WINDOW_WIDTH", str(cfg.force_window_width)),
         "FORCE_WINDOW_HEIGHT": get("FORCE_WINDOW_HEIGHT", str(cfg.force_window_height)),
@@ -212,13 +306,23 @@ def _write_env_updates(updates: Dict[str, str]) -> bool:
 
 @app.get("/")
 def index():
-    modes = [{"key": k, "label": v[0]} for k, v in STATE_MODES.items()]
-    return render_template("index.html", modes=modes)
+    modes = _build_mode_payload()
+    grouped = _group_modes(modes)
+    return render_template("index.html", modes=modes, grouped=grouped)
 
 
 @app.get("/api/modes")
 def api_modes():
-    return jsonify({k: {"label": v[0]} for k, v in STATE_MODES.items()})
+    payload: Dict[str, Dict[str, object]] = {}
+    for item in _build_mode_payload():
+        payload[item["key"]] = {
+            "label": item["label"],
+            "description": item["description"],
+            "category": item["category"],
+            "badge": item["badge"],
+            "tags": item["tags"],
+        }
+    return jsonify(payload)
 
 
 @app.get("/api/status")
