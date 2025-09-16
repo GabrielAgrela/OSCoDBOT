@@ -109,6 +109,9 @@ The UI consumes the same REST API that you can script against:
 - `GET /shots/latest` - latest debug match image.
 - `POST /api/quit` - stop the machine and exit the process.
 
+**OCR Utilities**
+- `ReadText` uses EasyOCR under the hood. Set `region_pct` to crop the screenshot, optionally specify `expected` for fuzzy matching, and dial `min_ratio` to control tolerance.
+
 Packaging
 - `codbot.spec` targets PyInstaller if you want to distribute a bundled executable. Build with:
   ```

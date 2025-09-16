@@ -6,6 +6,7 @@ from .end import EndCycle
 from .check import CheckTemplate, CheckTemplatesCountAtLeast
 from .cooldown import CooldownGate, SetCooldown, SetCooldownRandom
 from .retry import Retry
+from .ocr import ReadText
 
 __all__ = [
     "Screenshot",
@@ -22,4 +23,5 @@ __all__ = [
     "SetCooldown",
     "SetCooldownRandom",
     "Retry",
+    "ReadText",
 ]

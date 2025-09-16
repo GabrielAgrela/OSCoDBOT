@@ -4,3 +4,4 @@ mss
 Pillow
 pywin32
 Flask
+easyocr
