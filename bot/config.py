@@ -47,7 +47,7 @@ class AppConfig:
     action_menu_first_half_region_pct: tuple[float, float, float, float] = (0.075, 0.1, 0.2, 0.4)
 
     #action menu training region
-    action_menu_training_region_pct: tuple[float, float, float, float] = (0, 0.3, 0.25, 0.42)
+    action_menu_training_region_pct: tuple[float, float, float, float] = (0, 0.3, 0.25, 0.51)
 
     #action menu close region
     action_menu_close_region_pct: tuple[float, float, float, float] = (0.2, 0.25, 0.1, 0.5)

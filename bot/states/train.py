@@ -14,6 +14,7 @@ def build_train_state(cfg: AppConfig) -> tuple[State, Context]:
             "TrainMageButton.png",
             "TrainBalistaButton.png",
             "TrainInfantaryButton.png",
+            "TrainCelestialButton.png",
             "TrainInfantryButton.png",
         ],
     )
