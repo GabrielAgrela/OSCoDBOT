@@ -166,8 +166,53 @@ def build_train_state(cfg: AppConfig, spec: TrainSpec) -> tuple[State, Context]:
                 ),
                 Wait(name="wait_after_type_btn", seconds=spec.wait_after_type_btn_s),
             ],
-            on_success="ClickTrain",
+            on_success="TryUpgrade",
+            on_failure="TryUpgrade",
+        ),
+        GraphStep(
+            name="TryUpgrade",
+            actions=[
+                Screenshot(name=f"{spec.key}_cap_upgrade_icon"),
+                FindAndClick(
+                    name="UpgradeIconClick",
+                    templates=["UpgradeIcon.png"],
+                    region_pct=cfg.train_troop_selection_region_pct,
+                    threshold=cfg.match_threshold,
+                ),
+                Wait(name="wait_after_upgrade_icon", seconds=spec.wait_after_type_btn_s),
+            ],
+            on_success="ClickUpgradeButton",
             on_failure="ClickTrain",
+        ),
+        GraphStep(
+            name="ClickUpgradeButton",
+            actions=[
+                Screenshot(name=f"{spec.key}_cap_upgrade_button"),
+                FindAndClick(
+                    name="UpgradeButtonClick",
+                    templates=["UpgradeButton.png"],
+                    region_pct=full,
+                    threshold=cfg.match_threshold,
+                ),
+                Wait(name="wait_after_upgrade_button", seconds=spec.wait_after_train_s),
+            ],
+            on_success="ClickPromoteButton",
+            on_failure="ClickTrain",
+        ),
+        GraphStep(
+            name="ClickPromoteButton",
+            actions=[
+                Screenshot(name=f"{spec.key}_cap_promote_button"),
+                FindAndClick(
+                    name="PromoteButtonClick",
+                    templates=["PromoteButton.png"],
+                    region_pct=full,
+                    threshold=cfg.match_threshold,
+                ),
+                Wait(name="wait_after_promote", seconds=spec.wait_after_train_s),
+            ],
+            on_success="End",
+            on_failure="End",
         ),
         GraphStep(
             name="ClickTrain",
@@ -206,3 +251,4 @@ def build_train_state(cfg: AppConfig, spec: TrainSpec) -> tuple[State, Context]:
     ]
 
     return GraphState(steps=steps, start="CooldownGate", loop_sleep_s=0.05), ctx
+

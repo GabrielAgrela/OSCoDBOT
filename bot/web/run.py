@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import os
 import socket
 import threading
 import time
@@ -9,9 +10,9 @@ from bot.core.window import enable_dpi_awareness
 from .app import app
 
 
-def _serve() -> None:
+def _serve(host: str, port: int) -> None:
     """Run the Flask app in a background thread."""
-    app.run(host="127.0.0.1", port=5000, debug=False, use_reloader=False, threaded=True)
+    app.run(host=host, port=port, debug=False, use_reloader=False, threaded=True)
 
 
 def _wait_for_server(host: str, port: int, timeout_s: float = 5.0) -> None:
@@ -27,13 +28,25 @@ def _wait_for_server(host: str, port: int, timeout_s: float = 5.0) -> None:
 
 
 def run_app() -> None:
+    bind_host = os.getenv("WEB_BIND_HOST", "127.0.0.1").strip() or "127.0.0.1"
+    port_raw = os.getenv("WEB_PORT", "5000").strip()
+    try:
+        port = int(port_raw)
+        if not (0 < port < 65536):
+            raise ValueError
+    except ValueError:
+        port = 5000
+    display_host = os.getenv("WEB_DISPLAY_HOST", "").strip()
+    if not display_host:
+        display_host = "127.0.0.1" if bind_host in ("0.0.0.0", "::", "") else bind_host
+    wait_host = "127.0.0.1" if bind_host in ("0.0.0.0", "::", "") else bind_host
+
     enable_dpi_awareness()
-    thread = threading.Thread(target=_serve, daemon=True)
+    thread = threading.Thread(target=_serve, args=(bind_host, port), daemon=True)
     thread.start()
-    host, port = "127.0.0.1", 5000
-    _wait_for_server(host, port)
-    url = f"http://{host}:{port}"
-    print(f"Opening control panel at {url}")
+    _wait_for_server(wait_host, port)
+    url = f"http://{display_host}:{port}"
+    print(f"Opening control panel at {url} (listening on {bind_host}:{port})")
     try:
         webbrowser.open(url, new=1, autoraise=True)
     except Exception:
@@ -43,3 +56,5 @@ def run_app() -> None:
             time.sleep(3600)
     except KeyboardInterrupt:
         pass
+
+

@@ -55,6 +55,9 @@ class AppConfig:
     #resource buy window close button region
     resource_buy_window_close_button_region_pct: tuple[float, float, float, float] = (0.8, 0.05, 0.1, 0.2)
 
+    #train troop selection region
+    train_troop_selection_region_pct: tuple[float, float, float, float] = (0.1, 0.7, 0.4, 0.2)
+
 
     # Assets directory
     assets_dir: Path = Path("assets")
