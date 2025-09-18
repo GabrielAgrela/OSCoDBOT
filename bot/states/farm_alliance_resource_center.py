@@ -23,7 +23,7 @@ def build_farm_alliance_resource_center_state(cfg: AppConfig) -> tuple[State, Co
     thr = cfg.match_threshold
 
     steps = [
-        # 1) Click Alliance icon; on failure, stop
+        # 1) Click Alliance icon; if not visible, open the main menu and retry once
         GraphStep(
             name="OpenAlliance",
             actions=[
@@ -35,6 +35,37 @@ def build_farm_alliance_resource_center_state(cfg: AppConfig) -> tuple[State, Co
                     threshold=thr,
                 ),
                 Wait(name="Wait1", seconds=0.5),
+            ],
+            on_success="OpenTerritory",
+            on_failure="OpenMenuForAlliance",
+        ),
+        # Fallback: open the menu to reveal the Alliance icon, then retry once
+        GraphStep(
+            name="OpenMenuForAlliance",
+            actions=[
+                Screenshot(name="cap_menu_1"),
+                FindAndClick(
+                    name="MenuButton",
+                    templates=["MenuButton.png"],
+                    region_pct=FULL,
+                    threshold=thr,
+                ),
+                Wait(name="WaitMenu", seconds=0.5),
+            ],
+            on_success="OpenAllianceRetry",
+            on_failure="Stop",
+        ),
+        GraphStep(
+            name="OpenAllianceRetry",
+            actions=[
+                Screenshot(name="cap_alliance_retry"),
+                FindAndClick(
+                    name="AllianceIcon",
+                    templates=["AllianceIcon.png"],
+                    region_pct=FULL,
+                    threshold=thr,
+                ),
+                Wait(name="Wait1Retry", seconds=0.5),
             ],
             on_success="OpenTerritory",
             on_failure="Stop",

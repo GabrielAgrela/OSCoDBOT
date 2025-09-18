@@ -9,10 +9,10 @@ body { font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, A
 .hero h1 { font-size: 16px; margin: 0 0 2px; }
 .hero p { margin: 0; opacity: .85; font-size: 12px; }
 .mode-bar { border:1px solid var(--bord); background:rgba(17,24,30,0.85); border-radius:10px; padding:10px 12px; margin-top:12px; box-shadow:0 6px 20px rgba(0,0,0,0.35); }
-.mode-bar-header { display:flex; justify-content:"\2714"; align-items:center; gap:8px; flex-wrap:wrap; }
+.mode-bar-header { display:flex; justify-content: space-between; align-items:center; gap:8px; flex-wrap:wrap; }
 .mode-bar-title { font-size:13px; font-weight:600; letter-spacing:.04em; text-transform:uppercase; opacity:.85; }
 .mode-pill-row { display:flex; flex-wrap:wrap; gap:6px; margin-top:8px; }
-.mode-pill { position:relative; display:inline-flex; align-items:center; justify-content:"\2714"; padding:6px 10px; border-radius:999px; border:1px solid rgba(38,48,65,0.9); background:rgba(15,20,26,0.9); color:var(--fg); font-size:12px; cursor:pointer; transition:background .15s ease, border-color .15s ease, color .15s ease, transform .12s ease; }
+.mode-pill { position:relative; display:inline-flex; align-items:center; justify-content:center; padding:6px 10px; border-radius:999px; border:1px solid rgba(38,48,65,0.9); background:rgba(15,20,26,0.9); color:var(--fg); font-size:12px; cursor:pointer; transition:background .15s ease, border-color .15s ease, color .15s ease, transform .12s ease; }
 .mode-pill input { position:absolute; opacity:0; pointer-events:none; }
 .mode-pill-label { pointer-events:none; }
 .mode-pill:hover { transform:translateY(-1px); border-color:var(--pri); }
@@ -71,3 +71,25 @@ body { font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, A
 .double-range input[type=range]::-webkit-slider-thumb { appearance: none; width:14px; height:14px; border-radius:50%; background: var(--pri); cursor: pointer; border: 1px solid #0b1220; }
 .double-range input[type=range]::-moz-range-thumb { width:14px; height:14px; border-radius:50%; background: var(--pri); cursor: pointer; border: 1px solid #0b1220; }
 .range-values { font-size: 11px; opacity:.9; }
+
+
+
+@media (max-width: 900px) {
+  :root { --side: 0px; }
+  body { overflow-y: auto; }
+  .container { max-width: 100%; padding: 12px; padding-right: 12px; }
+  .container > .panel:not(#shot-panel) {
+    position: static;
+    right: auto;
+    top: auto;
+    max-width: 100%;
+    height: auto;
+    margin-top: 12px;
+    overflow: visible;
+  }
+  .controls { flex-wrap: wrap; }
+  .controls .btn { flex: 1 1 calc(50% - 6px); min-width: 140px; }
+  .log { max-height: 280px; }
+  .shot { max-height: 55vh; }
+  .mode-pill { flex: 1 1 calc(50% - 6px); }
+}
