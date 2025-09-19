@@ -14,7 +14,7 @@ from bot.core.state_machine import Context, State, StateMachine
 from bot.states import MODES as STATE_MODES, build_alternating_state, build_round_robin_state, build_with_checkstuck_state
 from bot.core import logs
 from bot.core import counters as _counters
-from bot.core.window import find_window_by_title_substr, get_client_rect_screen, bring_to_front
+from bot.core.window import find_window_by_title_substr, get_client_rect_screen, bring_to_front, close_window
 import numpy as _np  # type: ignore
 import mss as _mss   # type: ignore
 from datetime import datetime
@@ -560,6 +560,43 @@ def api_start():
     mach.start(ctx)
     _running = Running(kind="multi", modes=tuple(selection), machine=mach, ctx=ctx)
     return jsonify({"ok": True, "kind": "multi", "modes": selection})
+
+
+@app.post("/api/close-game")
+def api_close_game():
+    """Stop the state machine and request the game window to close."""
+    _stop_running()
+    cfg = DEFAULT_CONFIG
+    window_substr = str(getattr(cfg, "window_title_substr", "") or "").strip()
+    if not window_substr:
+        return jsonify({"ok": False, "error": "WINDOW_TITLE_SUBSTR is not configured"}), 400
+    try:
+        logs.add("[Web] Close game requested", level='info')
+    except Exception:
+        pass
+    try:
+        hwnd = find_window_by_title_substr(window_substr)
+    except Exception:
+        hwnd = None
+    if not hwnd:
+        try:
+            logs.add("[Web] Close game skipped (window not found)", level='info')
+        except Exception:
+            pass
+        return jsonify({"ok": True, "missing": True})
+    try:
+        closed, forced = close_window(hwnd, wait_s=5.0)
+    except Exception:
+        closed, forced = (False, False)
+    if not closed:
+        return jsonify({"ok": False, "error": "Failed to close game window"}), 500
+    if forced:
+        try:
+            logs.add("[Web] Force-terminated Call of Dragons process", level='warn')
+        except Exception:
+            pass
+    return jsonify({"ok": True, "forced": bool(forced)})
+
 
 
 @app.post("/api/stop")

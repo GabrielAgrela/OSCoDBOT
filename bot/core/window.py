@@ -4,6 +4,7 @@ from dataclasses import dataclass
 from typing import Optional, Tuple
 import ctypes
 import random
+import time
 
 import win32api
 import win32con
@@ -150,6 +151,95 @@ def bring_to_front(hwnd: int) -> None:
         # Foreground rules may prevent focus; clicking still works with absolute coords
         pass
 
+
+
+
+
+
+def _wait_for_window_gone(hwnd: int, timeout_s: float) -> bool:
+    deadline = time.time() + max(0.0, float(timeout_s))
+    while True:
+        try:
+            if not win32gui.IsWindow(hwnd):
+                return True
+        except Exception:
+            return True
+        if time.time() >= deadline:
+            break
+        time.sleep(0.05)
+    try:
+        return not win32gui.IsWindow(hwnd)
+    except Exception:
+        return True
+
+
+def close_window(hwnd: int, wait_s: float = 3.0, force_terminate: bool = True) -> Tuple[bool, bool]:
+    """Attempt to close a window gracefully, optionally force-terminating its process."""
+    if not hwnd:
+        return False, False
+    posted = False
+    try:
+        win32gui.PostMessage(hwnd, win32con.WM_SYSCOMMAND, win32con.SC_CLOSE, 0)
+        posted = True
+    except Exception:
+        try:
+            win32gui.PostMessage(hwnd, win32con.WM_CLOSE, 0, 0)
+            posted = True
+        except Exception:
+            posted = False
+    if posted and _wait_for_window_gone(hwnd, wait_s):
+        return True, False
+    if not force_terminate:
+        return False, False
+    forced = terminate_window_process(hwnd, wait_s=max(wait_s, 2.0))
+    if forced:
+        return True, True
+    return False, False
+
+
+def terminate_window_process(hwnd: int, wait_s: float = 3.0) -> bool:
+    """Force terminate the process that owns the given window."""
+    try:
+        _, pid = win32process.GetWindowThreadProcessId(hwnd)
+    except Exception:
+        pid = 0
+    if not pid:
+        return False
+    access = getattr(win32con, 'PROCESS_TERMINATE', 0x0001)
+    sync_flag = getattr(win32con, 'SYNCHRONIZE', 0x00100000)
+    access |= sync_flag
+    try:
+        handle = win32api.OpenProcess(access, False, int(pid))
+    except Exception:
+        handle = None
+    if not handle:
+        return False
+    terminated = False
+    try:
+        try:
+            win32api.TerminateProcess(handle, 0)
+            terminated = True
+        except Exception:
+            try:
+                ctypes.windll.kernel32.TerminateProcess(int(handle), 0)
+                terminated = True
+            except Exception:
+                terminated = False
+        if terminated and wait_s > 0:
+            try:
+                ctypes.windll.kernel32.WaitForSingleObject(int(handle), int(max(0.0, wait_s) * 1000))
+            except Exception:
+                end = time.time() + max(0.0, float(wait_s))
+                while time.time() < end:
+                    time.sleep(0.05)
+    finally:
+        try:
+            win32api.CloseHandle(handle)
+        except Exception:
+            pass
+    if not terminated:
+        return False
+    return _wait_for_window_gone(hwnd, max(1.5, float(wait_s)))
 
 def click_screen_xy(x: int, y: int) -> None:
     # Remember current cursor position, click at (x, y) with slight jitter, then return

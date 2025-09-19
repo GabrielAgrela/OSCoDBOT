@@ -307,6 +307,8 @@ async function togglePause() {
 window.addEventListener('DOMContentLoaded', () => {
   document.getElementById('start').addEventListener('click', start);
   document.getElementById('pause').addEventListener('click', togglePause);
+  const stopCloseBtn = document.getElementById('stop-close');
+  if (stopCloseBtn) stopCloseBtn.addEventListener('click', stopAndCloseGame);
   const quitBtn = document.getElementById('quit');
   if (quitBtn) quitBtn.addEventListener('click', quitApp);
   const settingsBtn = document.getElementById('settings-toggle');
@@ -383,6 +385,43 @@ async function metrics() {
     // ignore
   }
 }
+
+async function stopAndCloseGame() {
+  let proceed = true;
+  try {
+    proceed = confirm('Stop the bot and close Call of Dragons?');
+  } catch (e) {
+    proceed = true;
+  }
+  if (!proceed) return;
+  const btn = document.getElementById('stop-close');
+  if (btn) btn.disabled = true;
+  try {
+    const res = await fetch('/api/close-game', { method: 'POST' });
+    let body = null;
+    try { body = await res.json(); } catch (err) { body = null; }
+    if (!res.ok) {
+      alert('Failed to stop and close the game');
+    } else if (!body || body.ok !== true) {
+      const msg = body && body.error ? String(body.error) : 'Failed to stop and close the game';
+      alert(msg);
+    } else {
+      if (body.forced) {
+        console.warn('Force-terminated Call of Dragons process.');
+      }
+      if (body.missing) {
+        console.info('Call of Dragons window was not found; nothing to close.');
+      }
+    }
+  } catch (err) {
+    alert('Failed to stop and close the game');
+  } finally {
+    if (btn) btn.disabled = false;
+    try { await status(); } catch (err) { /* ignore */ }
+    try { await metrics(); } catch (err) { /* ignore */ }
+  }
+}
+
 
 async function quitApp() {
   try {
