@@ -287,7 +287,7 @@ def build_farm_state(cfg: AppConfig, spec: FarmSpec) -> tuple[State, Context]:
                 ),
                 Wait(name="wait_after_legions", seconds=spec.wait_after_legions_s),
             ],
-            on_success="March",
+            on_success="RemoveCommander",
             on_failure="EndNoLegions",
         ),
         GraphStep(
@@ -299,6 +299,22 @@ def build_farm_state(cfg: AppConfig, spec: FarmSpec) -> tuple[State, Context]:
             ],
             on_failure="CooldownGate",
             on_success="CooldownGate",
+        ),
+
+        GraphStep(
+            name="RemoveCommander",
+            actions=[
+                Screenshot(name=f"{key}_cap_remove_commander"),
+                FindAndClick(
+                    name="RemoveCommanderButton",
+                    templates=["RemoveCommanderButton.png"],
+                    region_pct=getattr(cfg, "remove_commander_button_region_pct", full),
+                    threshold=cfg.match_threshold,
+                ),
+                Wait(name="wait_after_remove_commander", seconds=getattr(cfg, "wait_after_remove_commander_s", 0.5)),
+            ],
+            on_success="March",
+            on_failure="March",
         ),
         GraphStep(
             name="March",

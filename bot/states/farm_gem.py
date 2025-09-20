@@ -156,8 +156,24 @@ def build_farm_gem_state(cfg: AppConfig) -> tuple[State, Context]:
                 ),
                 Wait(name="wait_after_legions", seconds=1.0),
             ],
-            on_success="March",
+            on_success="RemoveCommander",
             on_failure="EndNoLegions",
+        ),
+
+        GraphStep(
+            name="RemoveCommander",
+            actions=[
+                Screenshot(name="gems_cap_remove_commander"),
+                FindAndClick(
+                    name="RemoveCommanderButton",
+                    templates=["RemoveCommanderButton.png"],
+                    region_pct=getattr(cfg, "remove_commander_button_region_pct", full),
+                    threshold=cfg.match_threshold,
+                ),
+                Wait(name="wait_after_remove_commander", seconds=getattr(cfg, "wait_after_remove_commander_s", 0.5)),
+            ],
+            on_success="March",
+            on_failure="March",
         ),
         GraphStep(
             name="March",

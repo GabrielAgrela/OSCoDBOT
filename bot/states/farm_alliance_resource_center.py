@@ -207,7 +207,7 @@ def build_farm_alliance_resource_center_state(cfg: AppConfig) -> tuple[State, Co
                 ),
                 Wait(name="Wait10", seconds=0.5),
             ],
-            on_success="March",
+            on_success="RemoveCommander",
             on_failure="FallbackCenter",
         ),
         # Fallback: center click -> Gather -> open Create Legion icon -> retry CreateLegions
@@ -251,7 +251,23 @@ def build_farm_alliance_resource_center_state(cfg: AppConfig) -> tuple[State, Co
             on_success="CreateLegions",
             on_failure="Stop",
         ),
-        # 7) Click March; always end afterwards
+        # 7) Attempt to remove commander before marching
+        GraphStep(
+            name="RemoveCommander",
+            actions=[
+                Screenshot(name="cap_remove_commander"),
+                FindAndClick(
+                    name="RemoveCommanderButton",
+                    templates=["RemoveCommanderButton.png"],
+                    region_pct=getattr(cfg, "remove_commander_button_region_pct", FULL),
+                    threshold=thr,
+                ),
+                Wait(name="WaitRemoveCommander", seconds=getattr(cfg, "wait_after_remove_commander_s", 0.5)),
+            ],
+            on_success="March",
+            on_failure="March",
+        ),
+        # 8) Click March; always end afterwards
         GraphStep(
             name="March",
             actions=[

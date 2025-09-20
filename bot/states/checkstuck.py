@@ -97,6 +97,7 @@ def build_checkstuck_state(cfg: AppConfig) -> tuple[State, Context]:
                     templates=["CloseNewHeroesButton.png"],
                     region_pct=(0.0, 0.0, 1.0, 1.0),
                     threshold=cfg.match_threshold,
+                    verify_threshold=0.9,
                 ),
             ],
             on_success="EndCycleStep",
