@@ -152,23 +152,8 @@ def build_farm_state(cfg: AppConfig, spec: FarmSpec) -> tuple[State, Context]:
                 ),
                 Wait(name=f"wait_after_{key}", seconds=1.0),
             ],
-            on_success="IncreaseFarmLevelOnce",
-            on_failure="EndNoLegions",
-        ),
-        GraphStep(
-            name="IncreaseFarmLevelOnce",
-            actions=[
-                Screenshot(name=f"{key}_cap_plus_level"),
-                FindAndClick(
-                    name="PlusFarmLevel",
-                    templates=["PlusFarmLevelButton.png"],
-                    region_pct=cfg.resource_search_button_region_pct,
-                    threshold=cfg.match_threshold,
-                ),
-                Wait(name="wait_after_plus_level", seconds=0.5),
-            ],
             on_success="SearchFarmButton",
-            on_failure="SearchFarmButton",
+            on_failure="EndNoLegions",
         ),
         GraphStep(
             name="SearchFarmButton",
@@ -188,46 +173,7 @@ def build_farm_state(cfg: AppConfig, spec: FarmSpec) -> tuple[State, Context]:
                     ],
                 )
             ],
-            on_success="ConfirmSearchedOrDowngrade",
-            on_failure="EndNoLegions",
-        ),
-        GraphStep(
-            name="ConfirmSearchedOrDowngrade",
-            actions=[
-                Screenshot(name=f"{key}_cap_post_search_check"),
-                CheckTemplate(
-                    name="SearchStillVisible",
-                    templates=["SearchFarmButton.png"],
-                    region_pct=cfg.resource_search_button_region_pct,
-                    threshold=cfg.match_threshold,
-                ),
-            ],
-            # If search button is still visible, downgrade farm level and retry
-            on_success="DowngradeFarmLevel",
-            # Otherwise, proceed to gather
-            on_failure="GatherButton",
-        ),
-        GraphStep(
-            name="DowngradeFarmLevel",
-            actions=[
-                Retry(
-                    name="MinusFarmLevelRetry",
-                    attempts=3,
-                    actions=[
-                        Screenshot(name=f"{key}_cap_minus_level"),
-                        FindAndClick(
-                            name="MinusFarmLevel",
-                            templates=["MinusFarmLevelButton.png"],
-                            region_pct=cfg.resource_search_button_region_pct,
-                            threshold=cfg.match_threshold,
-                        ),
-                        Wait(name="wait_after_minus_level", seconds=0.8),
-                    ],
-                )
-            ],
-            # After lowering level, try searching again
-            on_success="SearchFarmButton",
-            # If we cannot lower the level, end gracefully
+            on_success="GatherButton",
             on_failure="EndNoLegions",
         ),
         GraphStep(

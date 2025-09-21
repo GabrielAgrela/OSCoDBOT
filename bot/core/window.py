@@ -10,7 +10,7 @@ import win32api
 import win32con
 import win32gui
 import win32process
-from bot.config import DEFAULT_CONFIG
+import bot.config as config
 
 
 @dataclass
@@ -274,7 +274,7 @@ def click_screen_xy(x: int, y: int) -> None:
         win32api.mouse_event(win32con.MOUSEEVENTF_LEFTUP, 0, 0, 0, 0)
     finally:
         # Optionally restore the cursor to its previous position
-        if DEFAULT_CONFIG.click_snap_back and prev_pos is not None:
+        if config.DEFAULT_CONFIG.click_snap_back and prev_pos is not None:
             try:
                 win32api.SetCursorPos(prev_pos)
             except Exception:

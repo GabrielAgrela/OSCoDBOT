@@ -9,7 +9,7 @@ import logging
 import os
 import threading as _threading
 
-from bot.config import DEFAULT_CONFIG, AppConfig, make_config
+import bot.config as config
 from bot.core.state_machine import Context, State, StateMachine
 from bot.states import MODES as STATE_MODES, build_alternating_state, build_round_robin_state, build_with_checkstuck_state
 from bot.core import logs
@@ -145,7 +145,7 @@ def _stop_running() -> None:
 
 
 def _restart_with_current_selection() -> bool:
-    """Rebuild and restart the running machine using the latest DEFAULT_CONFIG.
+    """Rebuild and restart the running machine using the latest configuration values.
 
     Returns True if a machine was restarted, False if nothing was running.
     """
@@ -161,8 +161,8 @@ def _restart_with_current_selection() -> bool:
     kind = _running.kind
     # Stop existing
     _stop_running()
-    # Recreate with latest DEFAULT_CONFIG
-    cfg = DEFAULT_CONFIG
+    # Recreate with latest configuration
+    cfg = config.DEFAULT_CONFIG
     try:
         if len(selection) == 1:
             key = selection[0]
@@ -196,7 +196,7 @@ def _restart_with_current_selection() -> bool:
 def _env_current_values() -> Dict[str, str]:
     """Return current config values mapped to .env keys as strings."""
     import os as _os
-    cfg = DEFAULT_CONFIG
+    cfg = config.DEFAULT_CONFIG
     # Helper to fetch env override or derive from cfg
     def get(k: str, default: str) -> str:
         v = _os.getenv(k)
@@ -299,6 +299,11 @@ def _write_env_updates(updates: Dict[str, str]) -> bool:
     try:
         txt = "\n".join(new_lines) + "\n"
         path.write_text(txt, encoding="utf-8")
+        for key, value in updates.items():
+            try:
+                _os.environ[key] = value
+            except Exception:
+                pass
         return True
     except Exception:
         return False
@@ -390,8 +395,7 @@ def api_env_post():
     ok = _write_env_updates(updates)
     # Rebuild default config and hot-restart running machine to apply changes live
     try:
-        import bot.config as _cfg
-        _cfg.DEFAULT_CONFIG = _cfg.make_config()
+        config.DEFAULT_CONFIG = config.make_config()
     except Exception:
         pass
     reloaded = False
@@ -421,7 +425,7 @@ def api_start():
     if not selection:
         return jsonify({"error": "No valid modes selected"}), 400
     _stop_running()
-    cfg = DEFAULT_CONFIG
+    cfg = config.DEFAULT_CONFIG
     target_title = getattr(cfg, "window_title_substr", "")
     launch_wait_s = float(getattr(cfg, "game_launch_wait_s", 0.0) or 0.0)
     initial_hwnd: Optional[int] = None
@@ -501,7 +505,7 @@ def api_start():
                 raw = _np.array(sct.grab(mon))
             img_bgr = raw[:, :, :3]
             try:
-                out_dir = getattr(DEFAULT_CONFIG, 'start_shots_dir', _Path('start_captures'))
+                out_dir = getattr(config.DEFAULT_CONFIG, 'start_shots_dir', _Path('start_captures'))
             except Exception:
                 out_dir = _Path('start_captures')
             folder = _Path(out_dir)
@@ -566,7 +570,7 @@ def api_start():
 def api_close_game():
     """Stop the state machine and request the game window to close."""
     _stop_running()
-    cfg = DEFAULT_CONFIG
+    cfg = config.DEFAULT_CONFIG
     window_substr = str(getattr(cfg, "window_title_substr", "") or "").strip()
     if not window_substr:
         return jsonify({"ok": False, "error": "WINDOW_TITLE_SUBSTR is not configured"}), 400
@@ -717,7 +721,7 @@ def shots_latest():
     Sends the file bytes with Cache-Control disabled so the UI can poll safely.
     """
     try:
-        shots_dir = DEFAULT_CONFIG.shots_dir
+        shots_dir = config.DEFAULT_CONFIG.shots_dir
     except Exception:
         from pathlib import Path as _Path
         shots_dir = _Path("debug_captures")

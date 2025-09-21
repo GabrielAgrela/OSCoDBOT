@@ -16,7 +16,7 @@ from bot.core.window import (
     move_window_xy,
     get_monitor_rect_for_window,
 )
-from bot.config import DEFAULT_CONFIG
+import bot.config as config
 try:
     import win32gui  # type: ignore
 except Exception:  # pragma: no cover - optional at runtime
@@ -40,12 +40,12 @@ class Screenshot(Action):
 
         # Try to enforce desired client size once per grab if configured
         try:
-            target_w = int(getattr(DEFAULT_CONFIG, 'force_window_width', 0))
-            target_h = int(getattr(DEFAULT_CONFIG, 'force_window_height', 0))
+            target_w = int(getattr(config.DEFAULT_CONFIG, 'force_window_width', 0))
+            target_h = int(getattr(config.DEFAULT_CONFIG, 'force_window_height', 0))
         except Exception:
             target_w = target_h = 0
         try:
-            do_resize = bool(getattr(DEFAULT_CONFIG, 'force_window_resize', True))
+            do_resize = bool(getattr(config.DEFAULT_CONFIG, 'force_window_resize', True))
         except Exception:
             do_resize = True
         if do_resize and target_w > 0 and target_h > 0:

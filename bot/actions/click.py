@@ -6,7 +6,7 @@ import random
 
 from bot.core.state_machine import Action, Context
 from bot.core.window import bring_to_front, click_screen_xy
-from bot.config import DEFAULT_CONFIG
+import bot.config as config
 
 try:
     import win32api  # type: ignore
@@ -102,7 +102,7 @@ class DragPercent(Action):
             win32api.mouse_event(win32con.MOUSEEVENTF_LEFTUP, 0, 0, 0, 0)
         finally:
             # Optionally restore the cursor to its previous position
-            if getattr(DEFAULT_CONFIG, 'click_snap_back', True) and prev_pos is not None:
+            if getattr(config.DEFAULT_CONFIG, 'click_snap_back', True) and prev_pos is not None:
                 try:
                     win32api.SetCursorPos(prev_pos)
                 except Exception:

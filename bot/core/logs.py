@@ -30,13 +30,14 @@ _file_lock = threading.Lock()
 
 try:
     # Configure file logging from app config if available
-    from bot.config import DEFAULT_CONFIG
+    import bot.config as config
 
-    if getattr(DEFAULT_CONFIG, "log_to_file", False):
-        p: Path = getattr(DEFAULT_CONFIG, "log_file", Path("bot.log"))
+    cfg = config.DEFAULT_CONFIG
+    if getattr(cfg, "log_to_file", False):
+        p: Path = getattr(cfg, "log_file", Path("bot.log"))
         _log_path_base = p
-        _log_max_bytes = int(getattr(DEFAULT_CONFIG, "log_max_bytes", 1_048_576))
-        _log_backups = int(getattr(DEFAULT_CONFIG, "log_backups", 5))
+        _log_max_bytes = int(getattr(cfg, "log_max_bytes", 1_048_576))
+        _log_backups = int(getattr(cfg, "log_backups", 5))
         try:
             if p.parent and not p.parent.exists():
                 p.parent.mkdir(parents=True, exist_ok=True)

@@ -12,8 +12,9 @@ _path: Path
 
 try:
     # Allow configuring counters file path via app config if available
-    from bot.config import DEFAULT_CONFIG  # type: ignore
-    p = getattr(DEFAULT_CONFIG, "counters_file", None)
+    import bot.config as config  # type: ignore
+    cfg = config.DEFAULT_CONFIG
+    p = getattr(cfg, "counters_file", None)
     if isinstance(p, (str, Path)) and str(p):
         _path = Path(p)
     else:
