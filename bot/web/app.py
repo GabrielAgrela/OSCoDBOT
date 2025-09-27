@@ -10,6 +10,7 @@ import os
 import threading as _threading
 
 import bot.config as config
+from bot import settings as settings_store
 from bot.core.state_machine import Context, State, StateMachine
 from bot.states import MODES as STATE_MODES, build_alternating_state, build_round_robin_state, build_with_checkstuck_state
 from bot.core import logs
@@ -193,120 +194,9 @@ def _restart_with_current_selection() -> bool:
         return False
 
 
-def _env_current_values() -> Dict[str, str]:
-    """Return current config values mapped to .env keys as strings."""
-    import os as _os
-    cfg = config.DEFAULT_CONFIG
-    # Helper to fetch env override or derive from cfg
-    def get(k: str, default: str) -> str:
-        v = _os.getenv(k)
-        if v is not None:
-            return v
-        return default
-    # Percent helpers
-    def pct(v: float) -> str:
-        try:
-            return f"{max(0.0, min(100.0, float(v)*100.0)):.1f}%"
-        except Exception:
-            return "0.0%"
-    # Bool helper
-    def b(v: bool) -> str:
-        return "true" if bool(v) else "false"
-    out: Dict[str, str] = {
-        "WINDOW_TITLE_SUBSTR": get("WINDOW_TITLE_SUBSTR", cfg.window_title_substr),
-        "MATCH_THRESHOLD": get("MATCH_THRESHOLD", f"{cfg.match_threshold:.2f}"),
-        "VERIFY_THRESHOLD": get("VERIFY_THRESHOLD", "0.85"),
-        "CLICK_SNAP_BACK": get("CLICK_SNAP_BACK", b(cfg.click_snap_back)),
-        "SAVE_SHOTS": get("SAVE_SHOTS", b(cfg.save_shots)),
-        "SHOTS_DIR": get("SHOTS_DIR", str(getattr(cfg, 'shots_dir', 'debug_captures'))),
-        "SHOTS_MAX_BYTES": get("SHOTS_MAX_BYTES", str(getattr(cfg, 'shots_max_bytes', 1073741824))),
-        "FORCE_WINDOW_RESIZE": get("FORCE_WINDOW_RESIZE", b(cfg.force_window_resize)),
-        "FORCE_WINDOW_WIDTH": get("FORCE_WINDOW_WIDTH", str(cfg.force_window_width)),
-        "FORCE_WINDOW_HEIGHT": get("FORCE_WINDOW_HEIGHT", str(cfg.force_window_height)),
-        "FARM_COOLDOWN_MIN": get("FARM_COOLDOWN_MIN", f"{cfg.farm_cooldown_min_s}s"),
-        "FARM_COOLDOWN_MAX": get("FARM_COOLDOWN_MAX", f"{cfg.farm_cooldown_max_s}s"),
-        "TRAIN_COOLDOWN_MIN": get("TRAIN_COOLDOWN_MIN", f"{cfg.train_cooldown_min_s}s"),
-        "TRAIN_COOLDOWN_MAX": get("TRAIN_COOLDOWN_MAX", f"{cfg.train_cooldown_max_s}s"),
-        "ALLIANCE_HELP_COOLDOWN_MIN": get("ALLIANCE_HELP_COOLDOWN_MIN", f"{cfg.alliance_help_cooldown_min_s}s"),
-        "ALLIANCE_HELP_COOLDOWN_MAX": get("ALLIANCE_HELP_COOLDOWN_MAX", f"{cfg.alliance_help_cooldown_max_s}s"),
-        "TRAIN_COOLDOWN_MIN": get("TRAIN_COOLDOWN_MIN", f"{cfg.train_cooldown_min_s}s"),
-        "TRAIN_COOLDOWN_MAX": get("TRAIN_COOLDOWN_MAX", f"{cfg.train_cooldown_max_s}s"),
-        "MAX_ARMIES": get("MAX_ARMIES", str(cfg.max_armies)),
-        "LOG_TO_FILE": get("LOG_TO_FILE", b(getattr(cfg, 'log_to_file', True))),
-        "LOG_FILE": get("LOG_FILE", str(getattr(cfg, 'log_file', 'bot.log'))),
-        "LOG_MAX_BYTES": get("LOG_MAX_BYTES", str(getattr(cfg, 'log_max_bytes', 1048576))),
-        "LOG_BACKUPS": get("LOG_BACKUPS", str(getattr(cfg, 'log_backups', 5))),
-        # Hotkey (if present in environment; default to F12)
-        "STOP_HOTKEY": get("STOP_HOTKEY", "F12"),
-    }
-    return out
-
-
-def _write_env_updates(updates: Dict[str, str]) -> bool:
-    """Merge updates into .env in the current working directory.
-
-    - Preserves comments and unrelated keys
-    - Adds new keys at the end
-    """
-    from pathlib import Path as _Path
-    import os as _os
-    import sys as _sys
-    # Prefer writing next to the executable when frozen; else CWD
-    if getattr(_sys, "frozen", False):
-        try:
-            base = _Path(_sys.executable).resolve().parent
-        except Exception:
-            base = _Path.cwd()
-    else:
-        base = _Path.cwd()
-    path = base / ".env"
-    existing: Dict[str, str] = {}
-    lines: list[str] = []
-    if path.exists():
-        try:
-            raw = path.read_text(encoding="utf-8").splitlines()
-            lines = raw[:]
-            for ln in raw:
-                s = ln.strip()
-                if not s or s.startswith("#"):
-                    continue
-                if "=" not in s:
-                    continue
-                k, v = s.split("=", 1)
-                existing[k.strip()] = v
-        except Exception:
-            lines = []
-            existing = {}
-    # Apply updates to lines
-    updated_keys = set()
-    new_lines: list[str] = []
-    for ln in lines:
-        s = ln.strip()
-        if not s or s.startswith("#") or "=" not in s:
-            new_lines.append(ln)
-            continue
-        k, _v = s.split("=", 1)
-        key = k.strip()
-        if key in updates:
-            new_lines.append(f"{key}={updates[key]}")
-            updated_keys.add(key)
-        else:
-            new_lines.append(ln)
-    # Append any remaining keys
-    for k, v in updates.items():
-        if k not in updated_keys and k:
-            new_lines.append(f"{k}={v}")
-    try:
-        txt = "\n".join(new_lines) + "\n"
-        path.write_text(txt, encoding="utf-8")
-        for key, value in updates.items():
-            try:
-                _os.environ[key] = value
-            except Exception:
-                pass
-        return True
-    except Exception:
-        return False
+def _settings_with_values() -> List[Dict[str, object]]:
+    """Return schema entries including current values."""
+    return settings_store.get_schema_with_values()
 
 
 @app.get("/")
@@ -374,36 +264,36 @@ def api_status():
     })
 
 
+@app.get("/api/settings")
 @app.get("/api/env")
-def api_env_get():
-    return jsonify(_env_current_values())
+def api_settings_get():
+    return jsonify({"settings": _settings_with_values()})
 
 
+@app.post("/api/settings")
 @app.post("/api/env")
-def api_env_post():
+def api_settings_post():
     data = request.get_json(silent=True) or {}
     if not isinstance(data, dict):
         return jsonify({"error": "Invalid payload"}), 400
-    # Whitelist keys we manage
-    allowed = set(_env_current_values().keys())
-    updates: Dict[str, str] = {}
-    for k, v in data.items():
-        if k in allowed and isinstance(v, str):
-            updates[k] = v.strip()
+    allowed = {item["key"] for item in settings_store.get_schema()}
+    updates: Dict[str, object] = {}
+    for key, value in data.items():
+        if key in allowed:
+            updates[key] = value
     if not updates:
         return jsonify({"ok": False, "error": "No valid keys"}), 400
-    ok = _write_env_updates(updates)
-    # Rebuild default config and hot-restart running machine to apply changes live
     try:
+        settings_store.update_settings(updates)
         config.DEFAULT_CONFIG = config.make_config()
     except Exception:
-        pass
+        return jsonify({"ok": False, "error": "Failed to save"}), 500
     reloaded = False
     try:
         reloaded = _restart_with_current_selection()
     except Exception:
         reloaded = False
-    return jsonify({"ok": bool(ok), "reloaded": bool(reloaded)})
+    return jsonify({"ok": True, "reloaded": bool(reloaded)})
 
 
 @app.post("/api/reload")

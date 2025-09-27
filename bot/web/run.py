@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import os
 import socket
 import threading
 import time
@@ -8,6 +7,7 @@ import webbrowser
 
 from bot.core.window import enable_dpi_awareness
 from .app import app
+from bot import settings as settings_store
 
 
 def _serve(host: str, port: int) -> None:
@@ -28,15 +28,16 @@ def _wait_for_server(host: str, port: int, timeout_s: float = 5.0) -> None:
 
 
 def run_app() -> None:
-    bind_host = os.getenv("WEB_BIND_HOST", "127.0.0.1").strip() or "127.0.0.1"
-    port_raw = os.getenv("WEB_PORT", "5000").strip()
+    cfg = settings_store.get_settings()
+    bind_host = str(cfg.get("WEB_BIND_HOST", "127.0.0.1") or "127.0.0.1").strip() or "127.0.0.1"
+    port_raw = str(cfg.get("WEB_PORT", 5000))
     try:
         port = int(port_raw)
         if not (0 < port < 65536):
             raise ValueError
     except ValueError:
         port = 5000
-    display_host = os.getenv("WEB_DISPLAY_HOST", "").strip()
+    display_host = str(cfg.get("WEB_DISPLAY_HOST", "") or "").strip()
     if not display_host:
         display_host = "127.0.0.1" if bind_host in ("0.0.0.0", "::", "") else bind_host
     wait_host = "127.0.0.1" if bind_host in ("0.0.0.0", "::", "") else bind_host

@@ -1,10 +1,11 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-import os
 from typing import Optional
 from pathlib import Path
 import sys
+
+from . import settings as settings_store
 
 
 @dataclass(frozen=True)
@@ -15,6 +16,7 @@ class AppConfig:
     # Capture and matching
     screenshot_period_s: float = 0.7
     match_threshold: float = 0.85
+    verify_threshold: float = 0.85
 
     # Default side region where the first image is searched (x, y, w, h in 0..1)
     units_overview_region_pct: tuple[float, float, float, float] = (0.9, 0.15, 0.1, 0.6)  # right 20%
@@ -108,111 +110,90 @@ class AppConfig:
     train_cooldown_max_s: int = 7200   # 2 hours
 
 
-def _load_env_file() -> None:
-    """Lightweight .env loader without external dependency.
-
-    Looks for .env next to the executable (CWD) and, when frozen
-    via PyInstaller, also inside the extracted bundle (sys._MEIPASS).
-    Parses KEY=VALUE lines, ignoring comments and blanks.
-    Does not overwrite existing environment variables.
-    """
-    candidates = [Path(".env")]
-    try:
-        if getattr(sys, "frozen", False):
-            meipass = Path(getattr(sys, "_MEIPASS", ""))
-            if meipass:
-                candidates.append(meipass / ".env")
-            # Also consider .env next to the executable
-            try:
-                exe_dir = Path(sys.executable).resolve().parent
-                candidates.append(exe_dir / ".env")
-            except Exception:
-                pass
-    except Exception:
-        pass
-    for path in candidates:
-        try:
-            if not path.exists():
-                continue
-            for raw in path.read_text(encoding="utf-8").splitlines():
-                line = raw.strip()
-                if not line or line.startswith("#"):
-                    continue
-                if "=" not in line:
-                    continue
-                key, val = line.split("=", 1)
-                key = key.strip()
-                val = val.strip().strip('"').strip("'")
-                if key and (key not in os.environ):
-                    os.environ[key] = val
-            # Stop at first found .env
-            break
-        except Exception:
-            # Ignore parsing errors; environment vars can still be set externally
-            pass
-
-
-def _env_float(name: str, default: float) -> float:
-    val: Optional[str] = os.getenv(name)
-    if not val:
-        return default
-    try:
-        s = val.strip()
-        if s.endswith("%"):
-            return float(s[:-1]) / 100.0
-        return float(s)
-    except Exception:
-        return default
-
-
-def _env_bool(name: str, default: bool) -> bool:
-    val: Optional[str] = os.getenv(name)
-    if val is None:
-        return default
-    s = val.strip().lower()
-    if s in {"1", "true", "yes", "on", "y"}:
-        return True
-    if s in {"0", "false", "no", "off", "n"}:
-        return False
-    return default
-
-
-def _env_duration_seconds(name: str, default: int) -> int:
+def _duration_seconds(value: Optional[object], default: int) -> int:
     """Parse duration like '300', '5m', '1h' into seconds (int)."""
-    val: Optional[str] = os.getenv(name)
-    if not val:
+    if value is None:
         return int(default)
-    s = val.strip().lower()
-    try:
-        if s.endswith('ms'):
-            return max(0, int(float(s[:-2].strip()) / 1000.0))
-        if s.endswith('s'):
-            return max(0, int(float(s[:-1].strip())))
-        if s.endswith('m'):
-            return max(0, int(float(s[:-1].strip()) * 60))
-        if s.endswith('h'):
-            return max(0, int(float(s[:-1].strip()) * 3600))
-        if s.endswith('d'):
-            return max(0, int(float(s[:-1].strip()) * 86400))
-        # No suffix: treat as seconds
-        return max(0, int(float(s)))
-    except Exception:
-        return int(default)
+    if isinstance(value, (int, float)):
+        try:
+            return max(0, int(float(value)))
+        except Exception:
+            return int(default)
+    if isinstance(value, str):
+        s = value.strip().lower()
+        try:
+            if s.endswith('ms'):
+                return max(0, int(float(s[:-2].strip()) / 1000.0))
+            if s.endswith('s'):
+                return max(0, int(float(s[:-1].strip())))
+            if s.endswith('m'):
+                return max(0, int(float(s[:-1].strip()) * 60))
+            if s.endswith('h'):
+                return max(0, int(float(s[:-1].strip()) * 3600))
+            if s.endswith('d'):
+                return max(0, int(float(s[:-1].strip()) * 86400))
+            return max(0, int(float(s)))
+        except Exception:
+            return int(default)
+    return int(default)
 
 
 def make_config() -> AppConfig:
-    # Load .env if present
-    _load_env_file()
-    # Pull configurable values from env
-    window_title = os.getenv("WINDOW_TITLE_SUBSTR", "Call of Dragons")
-    match_threshold = _env_float("MATCH_THRESHOLD", 0.85)
-    verify_threshold = _env_float("VERIFY_THRESHOLD", 0.85)
-    click_snap_back = _env_bool("CLICK_SNAP_BACK", True)
-    save_shots = _env_bool("SAVE_SHOTS", False)
-    shots_dir_env = os.getenv("SHOTS_DIR", "").strip()
+    settings = settings_store.get_settings()
+
+    def _str(key: str, default: str) -> str:
+        val = settings.get(key, default)
+        if val is None:
+            return default
+        return str(val)
+
+    def _bool(key: str, default: bool) -> bool:
+        val = settings.get(key)
+        if isinstance(val, bool):
+            return val
+        if isinstance(val, (int, float)):
+            return bool(val)
+        if isinstance(val, str):
+            s = val.strip().lower()
+            if s in {"1", "true", "yes", "on", "y"}:
+                return True
+            if s in {"0", "false", "no", "off", "n"}:
+                return False
+        return default
+
+    def _float(key: str, default: float) -> float:
+        val = settings.get(key)
+        try:
+            if isinstance(val, str):
+                s = val.strip()
+                if s.endswith("%"):
+                    return float(s[:-1]) / 100.0
+                return float(s)
+            if isinstance(val, (int, float)):
+                return float(val)
+        except Exception:
+            return default
+        return default
+
+    def _int(key: str, default: int) -> int:
+        val = settings.get(key)
+        try:
+            if isinstance(val, str):
+                return int(float(val.strip()))
+            if isinstance(val, (int, float)):
+                return int(val)
+        except Exception:
+            return default
+        return default
+
+    window_title = _str("WINDOW_TITLE_SUBSTR", "Call of Dragons")
+    match_threshold = _float("MATCH_THRESHOLD", 0.85)
+    verify_threshold = _float("VERIFY_THRESHOLD", 0.85)
+    click_snap_back = _bool("CLICK_SNAP_BACK", True)
+    save_shots = _bool("SAVE_SHOTS", False)
+    shots_dir_env = _str("SHOTS_DIR", "debug_captures").strip()
     shots_dir = Path(shots_dir_env) if shots_dir_env else Path("debug_captures")
-    # Separate directory for Start screenshots (not subject to pruning)
-    start_shots_dir_env = os.getenv("START_SHOTS_DIR", "").strip()
+    start_shots_dir_env = _str("START_SHOTS_DIR", "start_captures").strip()
     start_shots_dir = Path(start_shots_dir_env) if start_shots_dir_env else Path("start_captures")
     # Make shots_dir absolute to avoid CWD differences between UI/server threads
     try:
@@ -223,10 +204,7 @@ def make_config() -> AppConfig:
     except Exception:
         # Fallback: leave as-is if cwd is unavailable
         pass
-    try:
-        shots_max_bytes = int(os.getenv("SHOTS_MAX_BYTES", str(1_073_741_824)).strip())
-    except Exception:
-        shots_max_bytes = 1_073_741_824
+    shots_max_bytes = _int("SHOTS_MAX_BYTES", 1_073_741_824)
 
     # Resolve assets/templates paths for both dev and PyInstaller onefile/onedir
     assets_dir = Path("assets")
@@ -247,16 +225,10 @@ def make_config() -> AppConfig:
                 break
     except Exception:
         pass
-    force_window_resize = _env_bool("FORCE_WINDOW_RESIZE", True)
-    try:
-        force_window_width = int(os.getenv("FORCE_WINDOW_WIDTH", "1765").strip())
-    except Exception:
-        force_window_width = 1765
-    try:
-        force_window_height = int(os.getenv("FORCE_WINDOW_HEIGHT", "993").strip())
-    except Exception:
-        force_window_height = 993
-    game_shortcut_env = os.getenv("GAME_SHORTCUT_PATH", "").strip()
+    force_window_resize = _bool("FORCE_WINDOW_RESIZE", True)
+    force_window_width = _int("FORCE_WINDOW_WIDTH", 1765)
+    force_window_height = _int("FORCE_WINDOW_HEIGHT", 993)
+    game_shortcut_env = _str("GAME_SHORTCUT_PATH", "").strip()
     game_shortcut_path: Optional[Path]
     if game_shortcut_env:
         candidate = Path(game_shortcut_env)
@@ -268,50 +240,36 @@ def make_config() -> AppConfig:
         game_shortcut_path = candidate
     else:
         game_shortcut_path = None
-    try:
-        game_launch_wait_s = float(os.getenv("GAME_LAUNCH_WAIT", "60").strip())
-    except Exception:
-        game_launch_wait_s = 60.0
+    game_launch_wait_s = _float("GAME_LAUNCH_WAIT", 60.0)
     if game_launch_wait_s < 0:
         game_launch_wait_s = 0.0
 
-    log_to_file = _env_bool("LOG_TO_FILE", True)
-    log_file_env = os.getenv("LOG_FILE", "").strip()
+    log_to_file = _bool("LOG_TO_FILE", True)
+    log_file_env = _str("LOG_FILE", "bot.log").strip()
     log_file = Path(log_file_env) if log_file_env else Path("bot.log")
-    # Parse size/backups (fallback to defaults on invalid values)
-    try:
-        log_max_bytes = int(os.getenv("LOG_MAX_BYTES", "1048576").strip())
-    except Exception:
-        log_max_bytes = 1_048_576
-    try:
-        log_backups = int(os.getenv("LOG_BACKUPS", "5").strip())
-    except Exception:
-        log_backups = 5
+    log_max_bytes = _int("LOG_MAX_BYTES", 1_048_576)
+    log_backups = _int("LOG_BACKUPS", 5)
     # Farm cooldown min/max
-    cd_min = _env_duration_seconds("FARM_COOLDOWN_MIN", 300)
-    cd_max = _env_duration_seconds("FARM_COOLDOWN_MAX", 3600)
+    cd_min = _duration_seconds(settings.get("FARM_COOLDOWN_MIN"), 300)
+    cd_max = _duration_seconds(settings.get("FARM_COOLDOWN_MAX"), 3600)
     if cd_max < cd_min:
         cd_min, cd_max = cd_max, cd_min
     # Training cooldown min/max
-    tcd_min = _env_duration_seconds("TRAIN_COOLDOWN_MIN", 3600)
-    tcd_max = _env_duration_seconds("TRAIN_COOLDOWN_MAX", 7200)
+    tcd_min = _duration_seconds(settings.get("TRAIN_COOLDOWN_MIN"), 3600)
+    tcd_max = _duration_seconds(settings.get("TRAIN_COOLDOWN_MAX"), 7200)
     if tcd_max < tcd_min:
         tcd_min, tcd_max = tcd_max, tcd_min
     # Alliance help cooldown min/max
-    ah_min = _env_duration_seconds("ALLIANCE_HELP_COOLDOWN_MIN", 300)
-    ah_max = _env_duration_seconds("ALLIANCE_HELP_COOLDOWN_MAX", 900)
+    ah_min = _duration_seconds(settings.get("ALLIANCE_HELP_COOLDOWN_MIN"), 300)
+    ah_max = _duration_seconds(settings.get("ALLIANCE_HELP_COOLDOWN_MAX"), 900)
     if ah_max < ah_min:
         ah_min, ah_max = ah_max, ah_min
     # Max armies from env
-    try:
-        max_armies = int(os.getenv("MAX_ARMIES", "3").strip())
-        if max_armies < 1:
-            max_armies = 1
-    except Exception:
-        max_armies = 3
+    max_armies = max(1, _int("MAX_ARMIES", 3))
     return AppConfig(
         window_title_substr=window_title,
         match_threshold=match_threshold,
+        verify_threshold=verify_threshold,
         click_snap_back=click_snap_back,
         save_shots=save_shots,
         shots_dir=shots_dir,
