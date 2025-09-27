@@ -28,6 +28,8 @@ class Running:
     modes: Tuple[str, ...]
     machine: Optional[StateMachine]
     ctx: Optional[Context]
+    started_ts: float
+    last_window_seen_ts: float
 
 
 MODE_META = {
@@ -137,12 +139,68 @@ app.logger.disabled = True
 
 _running: Optional[Running] = None
 
+_WINDOW_MONITOR_POLL_S = 2.0
+_WINDOW_MONITOR_GRACE_S = 10.0
+
+
+def _monitor_window_loop() -> None:
+    """Background watchdog that stops the bot when the game window disappears."""
+
+    while True:
+        _time.sleep(_WINDOW_MONITOR_POLL_S)
+        running = _running
+        if not running or not running.ctx:
+            continue
+
+        # If selection changed while we were iterating, skip this cycle to avoid
+        # interfering with the new run.
+        if running is not _running:
+            continue
+
+        window_substr = str(getattr(running.ctx, "window_title_substr", "") or "").strip()
+        if not window_substr:
+            if running is _running:
+                running.last_window_seen_ts = _time.time()
+            continue
+
+        try:
+            hwnd = find_window_by_title_substr(window_substr)
+        except Exception:
+            hwnd = None
+
+        now = _time.time()
+
+        if hwnd:
+            if running is _running:
+                running.last_window_seen_ts = now
+            continue
+
+        last_seen = getattr(running, "last_window_seen_ts", getattr(running, "started_ts", now))
+        if now - last_seen < _WINDOW_MONITOR_GRACE_S:
+            continue
+
+        if running is not _running:
+            continue
+
+        try:
+            logs.add("[Monitor] Game window not detected; stopping bot.", level="warn")
+        except Exception:
+            pass
+        _stop_running()
+
+
 
 def _stop_running() -> None:
     global _running
     if _running and _running.machine and _running.ctx:
         _running.machine.stop(_running.ctx)
     _running = None
+
+
+_window_monitor_thread = _threading.Thread(
+    target=_monitor_window_loop, name="cod-window-monitor", daemon=True
+)
+_window_monitor_thread.start()
 
 
 def _restart_with_current_selection() -> bool:
@@ -171,23 +229,39 @@ def _restart_with_current_selection() -> bool:
             state, ctx = build_with_checkstuck_state(cfg, builder, label=label)
             mach = StateMachine(state)
             mach.start(ctx)
+            start_ts = _time.time()
             if was_paused:
                 try:
                     mach.pause(ctx)
                 except Exception:
                     pass
-            _running = Running(kind="single", modes=(key,), machine=mach, ctx=ctx)
+            _running = Running(
+                kind="single",
+                modes=(key,),
+                machine=mach,
+                ctx=ctx,
+                started_ts=start_ts,
+                last_window_seen_ts=start_ts,
+            )
         else:
             builders = [(STATE_MODES[k][0], STATE_MODES[k][1]) for k in selection]
             state, ctx = build_round_robin_state(cfg, builders)
             mach = StateMachine(state)
             mach.start(ctx)
+            start_ts = _time.time()
             if was_paused:
                 try:
                     mach.pause(ctx)
                 except Exception:
                     pass
-            _running = Running(kind="multi", modes=tuple(selection), machine=mach, ctx=ctx)
+            _running = Running(
+                kind="multi",
+                modes=tuple(selection),
+                machine=mach,
+                ctx=ctx,
+                started_ts=start_ts,
+                last_window_seen_ts=start_ts,
+            )
         return True
     except Exception:
         _running = None
@@ -436,7 +510,15 @@ def api_start():
         except Exception:
             pass
         mach.start(ctx)
-        _running = Running(kind="single", modes=(key,), machine=mach, ctx=ctx)
+        start_ts = _time.time()
+        _running = Running(
+            kind="single",
+            modes=(key,),
+            machine=mach,
+            ctx=ctx,
+            started_ts=start_ts,
+            last_window_seen_ts=start_ts,
+        )
         return jsonify({"ok": True, "kind": "single", "modes": selection})
     # 2+ selections: run round-robin in selection order
     builders = [(STATE_MODES[k][0], STATE_MODES[k][1]) for k in selection]
@@ -452,7 +534,15 @@ def api_start():
     except Exception:
         pass
     mach.start(ctx)
-    _running = Running(kind="multi", modes=tuple(selection), machine=mach, ctx=ctx)
+    start_ts = _time.time()
+    _running = Running(
+        kind="multi",
+        modes=tuple(selection),
+        machine=mach,
+        ctx=ctx,
+        started_ts=start_ts,
+        last_window_seen_ts=start_ts,
+    )
     return jsonify({"ok": True, "kind": "multi", "modes": selection})
 
 
