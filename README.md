@@ -6,11 +6,12 @@ Highlights
 - Flask-powered web control panel with live status, counters, logs, and latest match screenshots (served in your browser).
 - Modular state machine with cooldown gates, stuck detection, and round-robin multi-mode orchestration.
 - Template-driven flows covering scouts, alliance help, resource farming, gem scanning, troop training, and more.
-- Configurable via .env (editable from the UI) with persistent counters and log rotation.
+- Configurable via `settings.json` (editable from the UI) with persistent counters and log rotation.
 
 Project Layout
 - `main.py` - entry point that enables DPI awareness and launches the embedded web UI.
-- `bot/config.py` - default configuration, .env loader, and runtime overrides.
+- `bot/config.py` - default configuration built from `settings.json` and runtime overrides.
+- `bot/settings.py` - schema, persistence helpers, and migration from legacy `.env` files.
 - `bot/core/` - window capture/click helpers, state machine runtime, logging, counters, and perf probes.
 - `bot/actions/` - reusable actions such as screenshot capture, template matching, cooldown gates, retries, and spiral camera moves.
 - `bot/states/` - high-level behaviors for each automation mode plus orchestrators for alternating / round-robin execution.
@@ -51,7 +52,7 @@ Running the Bot
 Web Control Panel
 - Live status shows running/paused state, selected modes, and remaining cooldowns reported from the state contexts.
 - Counters persist between runs (`bot.counters.json`) and session deltas reset each time you press **Start**.
-- The settings drawer edits `.env` in place and hot-reloads the machine when possible. You can tune match/verify thresholds, toggle snapping, change cooldown ranges with dual sliders, adjust logging/capture options, and point at custom shot directories.
+- The settings drawer edits `settings.json` in place and hot-reloads the machine when possible. You can tune match/verify thresholds, toggle snapping, adjust cooldowns, logging, capture options, hotkeys, and hosting parameters, all without restarting the bot.
 - The log view streams the last ~400 entries with severity coloring; `/shots/latest` preview shows the newest annotated match (enable `SAVE_SHOTS`).
 - Metrics include the active state/step, last action duration, cycle count, memory/handle usage, capture health, and the current game window rectangle.
 
@@ -68,7 +69,7 @@ All templates live under `assets/templates/`. Names are case-sensitive; capture 
 - **Stuck Recovery**: `BackArrow.png`, `CloseButton.png`, `ReconnectConfirmButton.png`, `ChatCloseButton.png`. This state is injected automatically after each cycle to clear popups.
 
 Configuration
-- Settings live in `.env` and are parsed on startup (and whenever you save from the UI). `bot/config.py` accepts raw numbers such as `0.85` or percent strings such as `85%`. Duration fields accept suffixes such as `30s`, `5m`, or `2h`.
+- Settings live in `settings.json` and are parsed on startup (and whenever you save from the UI). `bot/settings.py` keeps defaults and metadata, while `bot/config.py` accepts raw numbers such as `0.85`, percent strings such as `85%`, booleans, and duration strings such as `30s`, `5m`, or `2h` (also accepts bare integers for seconds).
 - **Window and launching**
   - `WINDOW_TITLE_SUBSTR`: substring used to locate the game window (default `Call of Dragons`).
   - `FORCE_WINDOW_RESIZE`, `FORCE_WINDOW_WIDTH`, `FORCE_WINDOW_HEIGHT`: resize the client area to a known size before running.
@@ -102,7 +103,7 @@ The UI consumes the same REST API that you can script against:
 - `GET /api/status` - running/paused state and active cooldowns.
 - `POST /api/start` - start with `{"selection": ["farm_wood", "train"]}`.
 - `POST /api/stop`, `/api/pause`, `/api/resume` - control the state machine.
-- `GET /api/env` / `POST /api/env` - read or update `.env` entries.
+- `GET /api/settings` / `POST /api/settings` - read or update `settings.json` entries.
 - `POST /api/reload` - rebuild the running machine without changing the selection.
 - `GET /api/logs?since=N` - stream incremental log entries.
 - `GET /api/metrics` - runtime metrics and counters.
