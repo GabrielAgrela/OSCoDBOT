@@ -315,8 +315,6 @@ window.addEventListener('DOMContentLoaded', () => {
   if (settingsBtn) settingsBtn.addEventListener('click', toggleSettings);
   const saveBtn = document.getElementById('save-settings');
   if (saveBtn) saveBtn.addEventListener('click', saveSettings);
-  const saveRestartBtn = document.getElementById('save-restart');
-  if (saveRestartBtn) saveRestartBtn.addEventListener('click', saveAndQuit);
   initModeInteractions();
   applySavedSelection();
   // Show saved counters immediately before first metrics fetch
@@ -334,8 +332,6 @@ window.addEventListener('DOMContentLoaded', () => {
   setInterval(refreshShot, 500);
   // Load settings
   loadSettings();
-  // Initialize range groups after first load
-  setTimeout(initAllRanges, 250);
 });
 
 async function metrics() {
@@ -477,27 +473,125 @@ function toggleSettings() {
 
 async function loadSettings() {
   try {
-    const res = await fetch('/api/env');
+    const res = await fetch('/api/settings');
     if (!res.ok) return;
     const data = await res.json();
-    for (const [k, v] of Object.entries(data)) {
-      const el = document.getElementById('env_' + k);
-      if (!el) continue;
-      const val = String(v ?? '');
-      const tag = el.tagName.toUpperCase();
-      const type = (el.getAttribute('type') || '').toLowerCase();
-      if (type === 'checkbox') {
-        const truthy = /^(1|true|yes|on)$/i.test(val);
-        el.checked = truthy;
-      } else if (tag === 'SELECT') {
-        el.value = val;
-      } else {
-        el.value = val;
-      }
-    }
-    // Sync range groups from hidden env inputs
-    initAllRanges();
+    const items = Array.isArray(data.settings) ? data.settings : [];
+    renderSettings(items);
   } catch (e) { /* ignore */ }
+}
+
+function renderSettings(items) {
+  const form = document.getElementById('settings-form');
+  if (!form) return;
+  form.innerHTML = '';
+  if (!Array.isArray(items) || items.length === 0) {
+    const empty = document.createElement('div');
+    empty.className = 'settings-empty';
+    empty.textContent = 'No configurable settings available.';
+    form.appendChild(empty);
+    return;
+  }
+  const groups = [];
+  const seen = new Map();
+  for (const item of items) {
+    const category = String(item.category || 'General');
+    if (!seen.has(category)) {
+      const arr = [];
+      groups.push({ category, items: arr });
+      seen.set(category, arr);
+    }
+    seen.get(category).push(item);
+  }
+  for (const group of groups) {
+    const groupEl = document.createElement('div');
+    groupEl.className = 'settings-group';
+    const title = document.createElement('div');
+    title.className = 'settings-group-title';
+    title.textContent = group.category;
+    groupEl.appendChild(title);
+    for (const entry of group.items) {
+      const key = String(entry.key || '').trim();
+      if (!key) continue;
+      const type = String(entry.type || 'string').toLowerCase();
+      const labelText = entry.label ? String(entry.label) : key;
+      const description = entry.description ? String(entry.description) : '';
+      const inputId = `setting_${key}`;
+      const itemEl = document.createElement('div');
+      itemEl.className = 'settings-item';
+
+      if (type === 'bool') {
+        const checkboxWrap = document.createElement('label');
+        checkboxWrap.className = 'settings-item-checkbox';
+        checkboxWrap.setAttribute('for', inputId);
+        const input = document.createElement('input');
+        input.type = 'checkbox';
+        input.id = inputId;
+        input.dataset.settingKey = key;
+        input.dataset.settingType = 'bool';
+        input.checked = !!entry.value;
+        checkboxWrap.appendChild(input);
+        const text = document.createElement('span');
+        text.textContent = labelText;
+        checkboxWrap.appendChild(text);
+        itemEl.appendChild(checkboxWrap);
+        if (description) {
+          const desc = document.createElement('div');
+          desc.className = 'settings-item-desc';
+          desc.textContent = description;
+          itemEl.appendChild(desc);
+        }
+      } else {
+        const label = document.createElement('label');
+        label.className = 'settings-item-label';
+        label.setAttribute('for', inputId);
+        label.textContent = labelText;
+        itemEl.appendChild(label);
+        const input = document.createElement('input');
+        input.id = inputId;
+        input.className = 'settings-input';
+        input.dataset.settingKey = key;
+        input.dataset.settingType = type;
+        input.autocomplete = 'off';
+        input.spellcheck = false;
+        let inputType = 'text';
+        if (type === 'int' || type === 'float' || type === 'number') {
+          inputType = 'number';
+          if (type === 'int' && !input.hasAttribute('step')) {
+            input.step = entry.step !== undefined ? String(entry.step) : '1';
+          } else if (entry.step !== undefined) {
+            input.step = String(entry.step);
+          }
+          if (entry.min !== undefined) input.min = String(entry.min);
+          if (entry.max !== undefined) input.max = String(entry.max);
+        }
+        input.type = inputType;
+        if (entry.placeholder) {
+          input.placeholder = String(entry.placeholder);
+        } else if (entry.default !== undefined && entry.default !== null) {
+          input.placeholder = String(entry.default);
+        }
+        const value = entry.value;
+        if (value !== undefined && value !== null) {
+          input.value = String(value);
+        } else {
+          input.value = '';
+        }
+        if (description) {
+          input.title = description;
+        }
+        itemEl.appendChild(input);
+        if (description) {
+          const desc = document.createElement('div');
+          desc.className = 'settings-item-desc';
+          desc.textContent = description;
+          itemEl.appendChild(desc);
+        }
+      }
+      groupEl.appendChild(itemEl);
+    }
+    form.appendChild(groupEl);
+  }
 }
 
 async function saveSettings() {
@@ -505,157 +599,27 @@ async function saveSettings() {
     const form = document.getElementById('settings-form');
     if (!form) return;
     const payload = {};
-    for (const el of form.querySelectorAll('input,select')) {
-      const id = el.id || '';
-      if (!id.startsWith('env_')) continue;
-      const key = id.substring(4);
-      const type = (el.getAttribute('type') || '').toLowerCase();
-      if (type === 'checkbox') {
-        payload[key] = el.checked ? 'true' : 'false';
+    for (const el of form.querySelectorAll('[data-setting-key]')) {
+      const key = el.dataset.settingKey;
+      if (!key) continue;
+      const type = (el.dataset.settingType || '').toLowerCase();
+      if (type === 'bool') {
+        payload[key] = !!el.checked;
       } else {
         payload[key] = el.value;
       }
     }
-    const res = await fetch('/api/env', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+    const res = await fetch('/api/settings', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
     if (!res.ok) { alert('Failed to save settings'); return; }
     const j = await res.json();
     if (!j.ok) { alert('Failed to save settings'); return; }
     try { await status(); } catch (e) {}
-    alert(j.reloaded ? 'Saved and applied.' : 'Saved.');
+    if (j.reloaded) {
+      alert('Saved and applied.');
+    } else {
+      alert('Saved.');
+    }
+    try { await loadSettings(); } catch (e) {}
   } catch (e) { alert('Failed to save settings'); }
 }
 
-async function saveAndQuit() {
-  await saveSettings();
-  await quitApp();
-}
-
-// Helpers for durations
-function parseDurationToSeconds(s) {
-  try {
-    if (!s) return 0;
-    const str = String(s).trim().toLowerCase();
-    if (str.endsWith('ms')) return Math.max(0, Math.floor(parseFloat(str.slice(0, -2)) / 1000));
-    if (str.endsWith('s')) return Math.max(0, Math.floor(parseFloat(str.slice(0, -1))));
-    if (str.endsWith('m')) return Math.max(0, Math.floor(parseFloat(str.slice(0, -1)) * 60));
-    if (str.endsWith('h')) return Math.max(0, Math.floor(parseFloat(str.slice(0, -1)) * 3600));
-    if (str.endsWith('d')) return Math.max(0, Math.floor(parseFloat(str.slice(0, -1)) * 86400));
-    return Math.max(0, Math.floor(parseFloat(str)));
-  } catch(e) { return 0; }
-}
-
-function formatSecondsToEnv(sec) {
-  const s = Math.max(0, Math.floor(sec || 0));
-  return `${s}s`;
-}
-
-function formatSecondsForLabel(sec) {
-  const s = Math.max(0, Math.floor(sec || 0));
-  if (s < 60) return `${s}s`;
-  if (s < 3600) return `${Math.round(s/60)}m`;
-  if (s < 86400) return `${Math.round(s/3600)}h`;
-  return `${Math.round(s/86400)}d`;
-}
-
-// Non-linear slider mapping helpers for cooldown ranges
-const RANGE_MAX_SECONDS_DEFAULT = 3600; // 1 hour cap per group
-const SLIDER_STEPS_DEFAULT = 1000;      // visual ticks in the <input type=range>
-const SLIDER_PIVOT_DEFAULT = 0.30;      // fraction of slider reserved for seconds region
-const SLIDER_LINEAR_SEC_DEFAULT = 120;   // linear region covers 0..N seconds
-
-function clampNumber(n, lo, hi) {
-  return Math.min(hi, Math.max(lo, n));
-}
-
-// Map slider position (0..steps) to seconds (0..maxSec)
-function sliderToSeconds(val, cfg) {
-  const steps = cfg.steps ?? SLIDER_STEPS_DEFAULT;
-  const maxSec = cfg.maxSec ?? RANGE_MAX_SECONDS_DEFAULT;
-  const pivot = cfg.pivot ?? SLIDER_PIVOT_DEFAULT;
-  const linSec = cfg.linearSec ?? SLIDER_LINEAR_SEC_DEFAULT;
-  const p = clampNumber((parseInt(val || 0, 10) || 0) / steps, 0, 1);
-  const lin = clampNumber(linSec, 0, maxSec);
-  if (p <= pivot || pivot === 0) {
-    // Linear region: precise seconds control
-    const s = Math.round((p / (pivot || 1)) * lin);
-    return clampNumber(s, 0, maxSec);
-  } else {
-    // Exponential region for larger values
-    const q = (p - pivot) / (1 - pivot); // 0..1
-    const span = Math.max(1, maxSec - lin);
-    const s = lin + Math.round(Math.pow(span + 1, q) - 1);
-    return clampNumber(s, 0, maxSec);
-  }
-}
-
-// Map seconds (0..maxSec) back to slider ticks (0..steps)
-function secondsToSlider(sec, cfg) {
-  const steps = cfg.steps ?? SLIDER_STEPS_DEFAULT;
-  const maxSec = cfg.maxSec ?? RANGE_MAX_SECONDS_DEFAULT;
-  const pivot = cfg.pivot ?? SLIDER_PIVOT_DEFAULT;
-  const linSec = cfg.linearSec ?? SLIDER_LINEAR_SEC_DEFAULT;
-  const s = clampNumber(Math.floor(sec || 0), 0, maxSec);
-  const lin = clampNumber(linSec, 0, maxSec);
-  if (s <= lin || pivot === 0) {
-    const p = (lin === 0) ? 0 : (s / lin) * pivot; // 0..pivot
-    return Math.round(p * steps);
-  } else {
-    const span = Math.max(1, maxSec - lin);
-    const q = Math.log(s - lin + 1) / Math.log(span + 1); // 0..1
-    const p = pivot + q * (1 - pivot);
-    return Math.round(p * steps);
-  }
-}
-
-function initAllRanges() {
-  document.querySelectorAll('.range-group').forEach(initRangeGroup);
-}
-
-function initRangeGroup(group) {
-  try {
-    const root = (group instanceof Element) ? group : document.querySelector(group);
-    if (!root) return;
-    const minId = root.getAttribute('data-min-id');
-    const maxId = root.getAttribute('data-max-id');
-    if (!minId || !maxId) return;
-    const hiddenMin = document.getElementById(minId);
-    const hiddenMax = document.getElementById(maxId);
-    const sliderMin = root.querySelector('input.range-min');
-    const sliderMax = root.querySelector('input.range-max');
-    const labelMin = root.querySelector('.val-min');
-    const labelMax = root.querySelector('.val-max');
-    if (!hiddenMin || !hiddenMax || !sliderMin || !sliderMax) return;
-    const cfg = {
-      maxSec: parseInt(root.getAttribute('data-max-seconds') || '3600', 10) || RANGE_MAX_SECONDS_DEFAULT,
-      steps: parseInt(sliderMin.getAttribute('max') || String(SLIDER_STEPS_DEFAULT), 10) || SLIDER_STEPS_DEFAULT,
-      pivot: parseFloat(root.getAttribute('data-pivot') || String(SLIDER_PIVOT_DEFAULT)),
-      linearSec: parseInt(root.getAttribute('data-linear-seconds') || String(SLIDER_LINEAR_SEC_DEFAULT), 10) || SLIDER_LINEAR_SEC_DEFAULT,
-    };
-    const minSec = clampNumber(parseDurationToSeconds(hiddenMin.value || '0s'), 0, cfg.maxSec);
-    const maxSec = clampNumber(parseDurationToSeconds(hiddenMax.value || '0s'), 0, cfg.maxSec);
-    sliderMin.value = String(secondsToSlider(minSec, cfg));
-    sliderMax.value = String(secondsToSlider(maxSec, cfg));
-
-    function syncHiddenAndLabels(aSec, bSec) {
-      hiddenMin.value = formatSecondsToEnv(aSec);
-      hiddenMax.value = formatSecondsToEnv(bSec);
-      if (labelMin) labelMin.textContent = formatSecondsForLabel(aSec);
-      if (labelMax) labelMax.textContent = formatSecondsForLabel(bSec);
-    }
-
-    function clampAndRender() {
-      let aSec = sliderToSeconds(sliderMin.value, cfg);
-      let bSec = sliderToSeconds(sliderMax.value, cfg);
-      if (aSec > bSec) { const t = aSec; aSec = bSec; bSec = t; }
-      // Update slider positions to reflect clamped seconds
-      sliderMin.value = String(secondsToSlider(aSec, cfg));
-      sliderMax.value = String(secondsToSlider(bSec, cfg));
-      syncHiddenAndLabels(aSec, bSec);
-    }
-
-    // Initial render
-    clampAndRender();
-    sliderMin.addEventListener('input', clampAndRender);
-    sliderMax.addEventListener('input', clampAndRender);
-  } catch (e) { /* ignore */ }
-}
