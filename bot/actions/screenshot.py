@@ -64,13 +64,13 @@ class Screenshot(Action):
                 # Independently ensure position is top-left of its monitor, or if it was maximized
                 try:
                     mon = get_monitor_rect_for_window(hwnd, work_area=False)
-                    needs_move = (rect_now.left != mon.left or rect_now.top != mon.top)
+                    needs_move = (rect_now.left != mon.left+100 or rect_now.top != mon.top)
                 except Exception:
                     mon = None
                     needs_move = False
                 if (needs_move or is_zoomed) and mon is not None:
                     try:
-                        move_window_xy(hwnd, mon.left, mon.top)
+                        move_window_xy(hwnd, mon.left+100, mon.top)
                         rect_now = get_client_rect_screen(hwnd)
                     except Exception:
                         pass
