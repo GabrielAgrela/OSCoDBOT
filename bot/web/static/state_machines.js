@@ -1390,7 +1390,6 @@
       els.stepEditor.hidden = true;
       els.stepList.innerHTML = '';
       els.diagram.innerHTML = '';
-      ensureArrowDefs();
       state.diagramLayers = { links: null, nodes: null };
       state.dragging = null;
       state.panning = null;
@@ -1559,7 +1558,6 @@
     applyViewBox();
     els.diagram.innerHTML = '';
     state.diagramLayers = { links: null, nodes: null };
-    ensureArrowDefs();
     createDiagramLayers();
     const nodeLayer = state.diagramLayers.nodes || els.diagram;
 
@@ -1603,13 +1601,32 @@
   function renderConnections() {
     const machine = state.current;
     if (!machine || machine.type !== 'graph') return;
+
+    const buckets = new Map();
+    const enqueue = (fromStep, toName, kind) => {
+      const target = findStep(toName);
+      if (!target) return;
+      const key = `${fromStep.name}->${target.name}`;
+      if (!buckets.has(key)) {
+        buckets.set(key, []);
+      }
+      buckets.get(key).push({ fromStep, target, kind });
+    };
+
     machine.steps.forEach(step => {
       if (step.on_success) {
-        drawLink(step, step.on_success, 'success');
+        enqueue(step, step.on_success, 'success');
       }
       if (step.on_failure) {
-        drawLink(step, step.on_failure, 'failure');
+        enqueue(step, step.on_failure, 'failure');
       }
+    });
+
+    buckets.forEach((entries) => {
+      const total = entries.length;
+      entries.forEach((entry, index) => {
+        drawLink(entry.fromStep, entry.target, entry.kind, index, total);
+      });
     });
   }
 
@@ -1632,12 +1649,11 @@
     return machine.steps.find(step => step.name === name) || null;
   }
 
-  function drawLink(fromStep, toName, kind) {
-    const target = findStep(toName);
+  function drawLink(fromStep, target, kind, index = 0, total = 1) {
     if (!target) return;
 
-    const group = document.createElementNS(svgNS, 'path');
-    group.setAttribute('class', `diagram-link ${kind}`);
+    const line = document.createElementNS(svgNS, 'path');
+    line.setAttribute('class', `diagram-link ${kind}`);
 
     const NODE_WIDTH = 140;
     const NODE_HEIGHT = 60;
@@ -1672,63 +1688,55 @@
       };
     };
 
-    const startPoint = projectEdgePoint(fromCenter, toCenter);
-    const endPoint = projectEdgePoint(toCenter, fromCenter);
-    const dx = endPoint.x - startPoint.x;
-    const dy = endPoint.y - startPoint.y;
-    const midX = startPoint.x + dx / 2;
-    const midY = startPoint.y + dy / 2 - 40;
-    const d = `M ${startPoint.x} ${startPoint.y} Q ${midX} ${midY} ${endPoint.x} ${endPoint.y}`;
-    group.setAttribute('d', d);
-    const markerId = kind === 'success' ? 'arrow-success' : kind === 'failure' ? 'arrow-failure' : 'arrow-neutral';
-    group.setAttribute('marker-end', `url(#${markerId})`);
+    const baseStart = projectEdgePoint(fromCenter, toCenter);
+    const baseEnd = projectEdgePoint(toCenter, fromCenter);
+
+    const dx = baseEnd.x - baseStart.x;
+    const dy = baseEnd.y - baseStart.y;
+    const length = Math.hypot(dx, dy) || 1;
+    const nx = dx / length;
+    const ny = dy / length;
+    const perpX = -ny;
+    const perpY = nx;
+
+    const offsetIndex = index - (total - 1) / 2;
+    const offsetDistance = offsetIndex * 18;
+
+    const startPoint = {
+      x: baseStart.x + perpX * offsetDistance,
+      y: baseStart.y + perpY * offsetDistance
+    };
+    const endPoint = {
+      x: baseEnd.x + perpX * offsetDistance,
+      y: baseEnd.y + perpY * offsetDistance
+    };
+
+    const curveMagnitude = Math.max(40, Math.min(140, length * 0.35)) + Math.abs(offsetDistance) * 0.4;
+    const controlPoint = {
+      x: (startPoint.x + endPoint.x) / 2 + perpX * curveMagnitude,
+      y: (startPoint.y + endPoint.y) / 2 + perpY * curveMagnitude
+    };
+
+    const d = `M ${startPoint.x} ${startPoint.y} Q ${controlPoint.x} ${controlPoint.y} ${endPoint.x} ${endPoint.y}`;
+    line.setAttribute('d', d);
+
+    const arrow = document.createElementNS(svgNS, 'path');
+    arrow.setAttribute('class', `diagram-arrow ${kind}`);
+    arrow.setAttribute('d', 'M 0 0 L -12 5 L -12 -5 Z');
+    const angle = Math.atan2(ny, nx) * (180 / Math.PI);
+    const arrowOffset = 2;
+    const arrowX = endPoint.x + nx * arrowOffset;
+    const arrowY = endPoint.y + ny * arrowOffset;
+    arrow.setAttribute('transform', `translate(${arrowX} ${arrowY}) rotate(${angle})`);
+
     const layer = state.diagramLayers && state.diagramLayers.links;
     if (layer) {
-      layer.appendChild(group);
+      layer.appendChild(line);
+      layer.appendChild(arrow);
     } else {
-      els.diagram.appendChild(group);
+      els.diagram.appendChild(line);
+      els.diagram.appendChild(arrow);
     }
-  }
-
-  function ensureArrowDefs() {
-    let defs = els.diagram.querySelector('defs');
-    if (!defs) {
-      defs = document.createElementNS(svgNS, 'defs');
-      els.diagram.appendChild(defs);
-    }
-    const markers = [
-      { id: 'arrow-neutral', color: 'rgba(148, 163, 184, 0.9)' },
-      { id: 'arrow-success', color: '#22c55e' },
-      { id: 'arrow-failure', color: '#ef4444' }
-    ];
-    markers.forEach(cfg => {
-      let marker = defs.querySelector(`#${cfg.id}`);
-      if (!marker) {
-        marker = document.createElementNS(svgNS, 'marker');
-        marker.setAttribute('id', cfg.id);
-        defs.appendChild(marker);
-      }
-      marker.setAttribute('markerWidth', '14');
-      marker.setAttribute('markerHeight', '10');
-      marker.setAttribute('refX', '12');
-      marker.setAttribute('refY', '5');
-      marker.setAttribute('orient', 'auto');
-      marker.setAttribute('markerUnits', 'strokeWidth');
-      marker.setAttribute('viewBox', '0 0 14 10');
-      let path = marker.querySelector('path');
-      if (!path) {
-        path = document.createElementNS(svgNS, 'path');
-        path.setAttribute('class', 'diagram-arrow');
-        marker.appendChild(path);
-      } else {
-        path.setAttribute('class', 'diagram-arrow');
-      }
-      path.setAttribute('d', 'M1,1 L13,5 L1,9 Z');
-      path.setAttribute('fill', cfg.color);
-      path.setAttribute('stroke', '#0f172a');
-      path.setAttribute('stroke-width', '0.8');
-      path.setAttribute('vector-effect', 'non-scaling-stroke');
-    });
   }
 
   function createDiagramLayers() {
