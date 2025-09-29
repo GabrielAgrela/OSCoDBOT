@@ -249,7 +249,9 @@ class WithCheckStuckState(State):
 
 def build_with_checkstuck_state(cfg: AppConfig, builder: Builder, label: str | None = None) -> tuple[State, Context]:
     primary, _ = builder(cfg)
-    checker, _ = build_checkstuck_state(cfg)
+    # `checkstuck` is now defined through JSON like other machines, so reuse the
+    # local loader helper to avoid circular imports with bot.states.__init__.
+    checker, _ = _build_checkstuck_state(cfg)
     ctx = Context(
         window_title_substr=cfg.window_title_substr,
         templates_dir=cfg.templates_dir,
