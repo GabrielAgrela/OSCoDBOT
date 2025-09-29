@@ -1,0 +1,135 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>State Machines • CoDBOT</title>
+    <link rel="icon" type="image/png" href="/static/favicon.png" />
+    <link rel="stylesheet" href="/static/style.css?v=6" />
+  </head>
+  <body>
+    <div class="container state-machines">
+      <header class="state-machines-header">
+        <h1>State Machines</h1>
+        <div class="header-actions">
+          <a href="/" class="btn">Back to Dashboard</a>
+          <button id="sm-refresh" type="button" class="btn">Refresh</button>
+          <button id="sm-new" type="button" class="btn primary">New State Machine</button>
+        </div>
+      </header>
+      <div class="state-machines-body">
+        <aside class="state-machines-list" aria-label="State machine list">
+          <ul id="sm-list" class="sm-list"></ul>
+        </aside>
+        <section class="state-machine-editor" aria-label="State machine editor">
+          <div class="editor-header">
+            <h2 id="sm-title">Select a state machine</h2>
+            <div class="editor-actions">
+              <button id="sm-save" type="button" class="btn primary" disabled>Save</button>
+              <button id="sm-delete" type="button" class="btn danger" disabled>Delete</button>
+            </div>
+          </div>
+          <div id="sm-status" class="status" role="status" aria-live="polite"></div>
+          <form id="sm-meta" class="sm-form" autocomplete="off">
+            <div class="form-grid">
+              <label>
+                <span>Key</span>
+                <input id="sm-key" name="key" type="text" placeholder="unique_key" />
+              </label>
+              <label>
+                <span>Label</span>
+                <input id="sm-label" name="label" type="text" placeholder="Display name" />
+              </label>
+              <label>
+                <span>Type</span>
+                <select id="sm-type" name="type">
+                  <option value="graph">Graph</option>
+                  <option value="sequence">Sequence</option>
+                </select>
+              </label>
+              <label>
+                <span>Context</span>
+                <input id="sm-context" name="context" type="text" placeholder="default" />
+              </label>
+              <label>
+                <span>Loop Sleep (s)</span>
+                <input id="sm-loop" name="loop_sleep_s" type="number" step="0.01" min="0" />
+              </label>
+              <label>
+                <span>Start Step</span>
+                <select id="sm-start" name="start"></select>
+              </label>
+            </div>
+            <fieldset class="meta-fieldset">
+              <legend>Metadata</legend>
+              <div class="form-grid">
+                <label>
+                  <span>Category</span>
+                  <input id="sm-category" type="text" placeholder="Category" />
+                </label>
+                <label>
+                  <span>Badge</span>
+                  <input id="sm-badge" type="text" placeholder="Badge" />
+                </label>
+                <label class="wide">
+                  <span>Description</span>
+                  <textarea id="sm-description" rows="2" placeholder="Description"></textarea>
+                </label>
+                <label class="wide">
+                  <span>Tags (comma separated)</span>
+                  <input id="sm-tags" type="text" placeholder="farm, gather" />
+                </label>
+              </div>
+            </fieldset>
+          </form>
+          <div id="sm-graph-editor" class="graph-editor" hidden>
+            <div class="diagram-wrapper">
+              <svg id="diagram-canvas" viewBox="0 0 960 640" preserveAspectRatio="xMidYMid meet">
+                <defs>
+                  <marker id="arrow" markerWidth="10" markerHeight="6" refX="10" refY="3" orient="auto" markerUnits="strokeWidth">
+                    <path d="M0,0 L10,3 L0,6 Z" class="diagram-arrow"></path>
+                  </marker>
+                </defs>
+              </svg>
+            </div>
+            <div class="step-controls">
+              <div class="step-list-header">
+                <h3>Steps</h3>
+                <button id="step-add" type="button" class="btn">Add Step</button>
+              </div>
+              <ul id="step-list" class="step-list"></ul>
+              <div id="step-editor" class="step-editor" hidden>
+                <h4 id="step-title">Step</h4>
+                <label>
+                  <span>Name</span>
+                  <input id="step-name" type="text" />
+                </label>
+                <label>
+                  <span>On Success</span>
+                  <select id="step-success"></select>
+                </label>
+                <label>
+                  <span>On Failure</span>
+                  <select id="step-failure"></select>
+                </label>
+                <label>
+                  <span>Actions (JSON array)</span>
+                  <textarea id="step-actions" rows="6"></textarea>
+                </label>
+                <div class="step-buttons">
+                  <button id="step-apply" type="button" class="btn">Apply</button>
+                  <button id="step-delete" type="button" class="btn danger">Delete Step</button>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div id="sm-sequence-editor" class="sequence-editor" hidden>
+            <h3>Sequence Actions (JSON array)</h3>
+            <textarea id="sequence-actions" rows="10"></textarea>
+          </div>
+        </section>
+      </div>
+    </div>
+    <script src="/static/state_machines.js?v=1"></script>
+  </body>
+</html>

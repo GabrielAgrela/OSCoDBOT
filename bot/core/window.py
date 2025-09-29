@@ -5,11 +5,25 @@ from typing import Optional, Tuple
 import ctypes
 import random
 import time
+import sys
 
-import win32api
-import win32con
-import win32gui
-import win32process
+if sys.platform == "win32":
+    import win32api
+    import win32con
+    import win32gui
+    import win32process
+else:  # pragma: no cover - platform-specific fallback
+    class _Win32Unavailable:
+        """Stub object used when Win32 bindings are unavailable."""
+
+        def __getattr__(self, name: str):
+            raise RuntimeError("Win32 APIs are unavailable on this platform")
+
+    win32api = _Win32Unavailable()  # type: ignore[assignment]
+    win32con = _Win32Unavailable()  # type: ignore[assignment]
+    win32gui = _Win32Unavailable()  # type: ignore[assignment]
+    win32process = _Win32Unavailable()  # type: ignore[assignment]
+
 import bot.config as config
 
 

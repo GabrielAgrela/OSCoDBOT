@@ -1,0 +1,141 @@
+{
+  "type": "graph",
+  "start": "ScoutIdle",
+  "loop_sleep_s": 0.05,
+  "steps": [
+    {
+      "name": "ScoutIdle",
+      "actions": [
+        {
+          "type": "Wait",
+          "name": "wait_before_screenshot",
+          "seconds": 2.0,
+          "randomize": true
+        },
+        {
+          "type": "Screenshot",
+          "name": "scout_cap_1"
+        },
+        {
+          "type": "FindAndClick",
+          "name": "ScoutIdle",
+          "templates": [
+            "ScoutIdle.png"
+          ],
+          "region_pct": {
+            "$config": "units_overview_region_pct"
+          },
+          "threshold": 0.94,
+          "verify_threshold": {
+            "$config": "verify_threshold"
+          }
+        }
+      ],
+      "on_success": "ScoutSelectExplore",
+      "on_failure": "EndNoIdle"
+    },
+    {
+      "name": "ScoutSelectExplore",
+      "actions": [
+        {
+          "type": "Wait",
+          "name": "wait_after_idle",
+          "seconds": 2,
+          "randomize": true
+        },
+        {
+          "type": "Screenshot",
+          "name": "scout_cap_2"
+        },
+        {
+          "type": "FindAndClick",
+          "name": "ScoutSelectExplore",
+          "templates": [
+            "ScoutSelectExplore.png",
+            "ScoutSelectExplore2.png"
+          ],
+          "region_pct": [
+            0.0,
+            0.0,
+            1.0,
+            1.0
+          ],
+          "threshold": {
+            "$config": "match_threshold"
+          },
+          "verify_threshold": {
+            "$config": "verify_threshold"
+          }
+        }
+      ],
+      "on_success": "ScoutExplore",
+      "on_failure": "EndNoIdle"
+    },
+    {
+      "name": "ScoutExplore",
+      "actions": [
+        {
+          "type": "Wait",
+          "name": "wait_after_select",
+          "seconds": 2,
+          "randomize": true
+        },
+        {
+          "type": "Screenshot",
+          "name": "scout_cap_3"
+        },
+        {
+          "type": "FindAndClick",
+          "name": "ScoutExplore",
+          "templates": [
+            "ScoutExplore.png"
+          ],
+          "region_pct": [
+            0.0,
+            0.0,
+            1.0,
+            1.0
+          ],
+          "threshold": {
+            "$config": "match_threshold"
+          },
+          "verify_threshold": {
+            "$config": "verify_threshold"
+          }
+        },
+        {
+          "type": "Wait",
+          "name": "wait_after_explore",
+          "seconds": 0.8,
+          "randomize": true
+        }
+      ],
+      "on_success": "ScoutIdle",
+      "on_failure": "EndNoIdle"
+    },
+    {
+      "name": "EndNoIdle",
+      "actions": [
+        {
+          "type": "EndCycle",
+          "name": "end_cycle"
+        }
+      ],
+      "on_success": "ScoutIdle",
+      "on_failure": "ScoutIdle"
+    }
+  ],
+  "key": "scouts",
+  "label": "Scouts",
+  "metadata": {
+    "category": "Support & Utilities",
+    "badge": "Support",
+    "description": "Keeps scouts exploring by clicking idle icons and reissuing explore orders automatically.",
+    "tags": [
+      "scout",
+      "explore",
+      "support"
+    ]
+  },
+  "context": "default"
+}

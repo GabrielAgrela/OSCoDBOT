@@ -8,11 +8,14 @@ import time as _time
 import logging
 import os
 import threading as _threading
+import json
+import re
 
 import bot.config as config
 from bot import settings as settings_store
 from bot.core.state_machine import Context, State, StateMachine
 from bot.states import MODES as STATE_MODES, build_alternating_state, build_round_robin_state, build_with_checkstuck_state
+from bot.state_machines import loader as state_loader
 from bot.core import logs
 from bot.core import counters as _counters
 from bot.core.window import find_window_by_title_substr, get_client_rect_screen, bring_to_front, close_window
@@ -96,20 +99,53 @@ CATEGORY_ORDER = [
 ]
 
 
+_STATE_DIR = state_loader.get_state_dir()
+_STATE_KEY_RE = re.compile(r"^[A-Za-z0-9_\-]+$")
+
+
+def _load_state_definition(key: str) -> Dict[str, object]:
+    try:
+        data = state_loader.load_definition(key)
+        if isinstance(data, dict):
+            return dict(data)
+    except Exception:
+        pass
+    return {}
+
+
+def _merge_metadata(key: str) -> Dict[str, object]:
+    meta: Dict[str, object] = {}
+    json_def = _load_state_definition(key)
+    if isinstance(json_def.get("metadata"), dict):
+        meta.update(json_def["metadata"])  # type: ignore[arg-type]
+    fallback = MODE_META.get(key, {})
+    for k, v in fallback.items():
+        meta.setdefault(k, v)
+    return meta
+
+
+def _state_label(key: str, fallback: str) -> str:
+    data = _load_state_definition(key)
+    label = data.get("label") if isinstance(data, dict) else None
+    if isinstance(label, str) and label.strip():
+        return label
+    return fallback
+
+
 def _build_mode_payload() -> List[Dict[str, object]]:
     payload: List[Dict[str, object]] = []
-    for key, (label, _builder) in STATE_MODES.items():
-        meta = MODE_META.get(key, {})
-        tags = list(meta.get("tags", []))
+    for key, (fallback_label, _builder) in STATE_MODES.items():
+        meta = _merge_metadata(key)
+        tags = list(meta.get("tags", [])) if isinstance(meta.get("tags"), list) else []
         if not tags:
             tags = key.replace('_', ' ').split()
         payload.append(
             {
                 "key": key,
-                "label": label,
-                "description": meta.get("description", "Automation flow."),
-                "category": meta.get("category", "Other"),
-                "badge": meta.get("badge", ""),
+                "label": _state_label(key, fallback_label),
+                "description": str(meta.get("description", "Automation flow.")),
+                "category": str(meta.get("category", "Other")),
+                "badge": str(meta.get("badge", "")),
                 "tags": tags,
             }
         )
@@ -130,6 +166,37 @@ def _group_modes(modes: List[Dict[str, object]]) -> List[Dict[str, object]]:
     for cat in sorted(grouped.keys()):
         ordered.append({"name": cat, "modes": _sort_items(grouped[cat])})
     return ordered
+
+
+def _normalize_state_key(key: str) -> str:
+    if not isinstance(key, str):
+        raise ValueError("Key must be a string")
+    clean = key.strip()
+    if not clean:
+        raise ValueError("Key cannot be empty")
+    if not _STATE_KEY_RE.fullmatch(clean):
+        raise ValueError("Key must contain only letters, numbers, underscores, or hyphens")
+    return clean
+
+
+def _state_file_path(key: str) -> _Path:
+    return _Path(_STATE_DIR) / f"{key}.json"
+
+
+def _write_state_definition(key: str, data: Dict[str, object]) -> None:
+    path = _state_file_path(key)
+    try:
+        path.parent.mkdir(parents=True, exist_ok=True)
+    except Exception:
+        pass
+    with path.open("w", encoding="utf-8") as fh:
+        json.dump(data, fh, indent=2, sort_keys=False)
+        fh.write("\n")
+
+
+def _validate_state_definition(key: str, data: Dict[str, object]) -> None:
+    cfg = config.DEFAULT_CONFIG
+    state_loader.build_state_from_dict(cfg, data, key=key)
 
 
 app = Flask(__name__, template_folder="templates", static_folder="static")
@@ -225,7 +292,8 @@ def _restart_with_current_selection() -> bool:
     try:
         if len(selection) == 1:
             key = selection[0]
-            label, builder = STATE_MODES[key]
+            fallback_label, builder = STATE_MODES[key]
+            label = _state_label(key, fallback_label)
             state, ctx = build_with_checkstuck_state(cfg, builder, label=label)
             mach = StateMachine(state)
             mach.start(ctx)
@@ -244,7 +312,7 @@ def _restart_with_current_selection() -> bool:
                 last_window_seen_ts=start_ts,
             )
         else:
-            builders = [(STATE_MODES[k][0], STATE_MODES[k][1]) for k in selection]
+            builders = [(_state_label(k, STATE_MODES[k][0]), STATE_MODES[k][1]) for k in selection]
             state, ctx = build_round_robin_state(cfg, builders)
             mach = StateMachine(state)
             mach.start(ctx)
@@ -271,6 +339,112 @@ def _restart_with_current_selection() -> bool:
 def _settings_with_values() -> List[Dict[str, object]]:
     """Return schema entries including current values."""
     return settings_store.get_schema_with_values()
+
+
+@app.get("/state-machines")
+def state_machines_page():
+    return render_template("state_machines.html")
+
+
+def _serialize_state_summary(key: str, data: Dict[str, object]) -> Dict[str, object]:
+    typ = str(data.get("type") or "")
+    steps = data.get("steps")
+    step_count = len(steps) if isinstance(steps, list) else None
+    meta = data.get("metadata") if isinstance(data.get("metadata"), dict) else {}
+    return {
+        "key": key,
+        "label": data.get("label") or key,
+        "type": typ,
+        "metadata": meta,
+        "start": data.get("start"),
+        "loop_sleep_s": data.get("loop_sleep_s"),
+        "steps": step_count,
+    }
+
+
+@app.get("/api/state-machines")
+def api_list_state_machines():
+    items: List[Dict[str, object]] = []
+    for key in state_loader.list_definitions():
+        try:
+            data = state_loader.load_definition(key)
+        except Exception:
+            continue
+        items.append(_serialize_state_summary(key, dict(data)))
+    return jsonify({"items": items})
+
+
+@app.get("/api/state-machines/<key>")
+def api_get_state_machine(key: str):
+    try:
+        norm = _normalize_state_key(key)
+    except ValueError as exc:
+        return jsonify({"error": str(exc)}), 400
+    try:
+        data = state_loader.load_definition(norm)
+    except FileNotFoundError:
+        return jsonify({"error": "Not found"}), 404
+    except Exception as exc:
+        return jsonify({"error": str(exc)}), 400
+    return jsonify(data)
+
+
+@app.post("/api/state-machines")
+def api_create_state_machine():
+    payload = request.get_json(silent=True)
+    if not isinstance(payload, dict):
+        return jsonify({"error": "JSON body required"}), 400
+    try:
+        key = _normalize_state_key(str(payload.get("key", "")))
+    except ValueError as exc:
+        return jsonify({"error": str(exc)}), 400
+    if (_state_file_path(key)).exists():
+        return jsonify({"error": "State machine already exists"}), 409
+    payload = dict(payload)
+    payload["key"] = key
+    payload.setdefault("context", "default")
+    try:
+        _validate_state_definition(key, payload)
+    except Exception as exc:
+        return jsonify({"error": f"Invalid definition: {exc}"}), 400
+    _write_state_definition(key, payload)
+    return jsonify(payload), 201
+
+
+@app.put("/api/state-machines/<key>")
+def api_update_state_machine(key: str):
+    try:
+        norm = _normalize_state_key(key)
+    except ValueError as exc:
+        return jsonify({"error": str(exc)}), 400
+    payload = request.get_json(silent=True)
+    if not isinstance(payload, dict):
+        return jsonify({"error": "JSON body required"}), 400
+    payload = dict(payload)
+    payload["key"] = norm
+    payload.setdefault("context", "default")
+    try:
+        _validate_state_definition(norm, payload)
+    except Exception as exc:
+        return jsonify({"error": f"Invalid definition: {exc}"}), 400
+    _write_state_definition(norm, payload)
+    return jsonify(payload)
+
+
+@app.delete("/api/state-machines/<key>")
+def api_delete_state_machine(key: str):
+    try:
+        norm = _normalize_state_key(key)
+    except ValueError as exc:
+        return jsonify({"error": str(exc)}), 400
+    path = _state_file_path(norm)
+    if not path.exists():
+        return jsonify({"error": "Not found"}), 404
+    try:
+        path.unlink()
+    except Exception as exc:
+        return jsonify({"error": str(exc)}), 500
+    return jsonify({"ok": True})
 
 
 @app.get("/")
@@ -496,7 +670,8 @@ def api_start():
             return
     if len(selection) == 1:
         key = selection[0]
-        label, builder = STATE_MODES[key]
+        fallback_label, builder = STATE_MODES[key]
+        label = _state_label(key, fallback_label)
         # Wrap with checkstuck so it runs after each cycle; pass label for pink switch logs
         state, ctx = build_with_checkstuck_state(cfg, builder, label=label)
         mach = StateMachine(state)
@@ -521,7 +696,7 @@ def api_start():
         )
         return jsonify({"ok": True, "kind": "single", "modes": selection})
     # 2+ selections: run round-robin in selection order
-    builders = [(STATE_MODES[k][0], STATE_MODES[k][1]) for k in selection]
+    builders = [(_state_label(k, STATE_MODES[k][0]), STATE_MODES[k][1]) for k in selection]
     state, ctx = build_round_robin_state(cfg, builders)
     mach = StateMachine(state)
     if initial_hwnd:

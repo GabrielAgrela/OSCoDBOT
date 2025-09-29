@@ -1,0 +1,91 @@
+{
+  "type": "graph",
+  "start": "CooldownGate",
+  "loop_sleep_s": 0.05,
+  "steps": [
+    {
+      "name": "CooldownGate",
+      "actions": [
+        {
+          "type": "CooldownGate",
+          "name": "alliance_help_cooldown_gate",
+          "key": "alliance_help"
+        }
+      ],
+      "on_success": "ClickHelp",
+      "on_failure": "CooldownGate"
+    },
+    {
+      "name": "ClickHelp",
+      "actions": [
+        {
+          "type": "Screenshot",
+          "name": "help_cap_1"
+        },
+        {
+          "type": "FindAndClick",
+          "name": "AllianceHelp",
+          "templates": [
+            "AllianceHelp.png",
+            "AllianceHelpBig.png"
+          ],
+          "region_pct": {
+            "$config": "alliance_help_region_pct"
+          },
+          "threshold": {
+            "$config": "match_threshold"
+          },
+          "verify_threshold": {
+            "$config": "verify_threshold"
+          }
+        }
+      ],
+      "on_success": "CooldownAndEnd",
+      "on_failure": "CooldownAndEnd"
+    },
+    {
+      "name": "CooldownAndEnd",
+      "actions": [
+        {
+          "type": "SetCooldownRandom",
+          "name": "alliance_help_set_cooldown",
+          "key": "alliance_help",
+          "min_seconds": {
+            "$config": "alliance_help_cooldown_min_s",
+            "default": 300
+          },
+          "max_seconds": {
+            "$config": "alliance_help_cooldown_max_s",
+            "default": 900
+          }
+        }
+      ],
+      "on_success": "End",
+      "on_failure": "End"
+    },
+    {
+      "name": "End",
+      "actions": [
+        {
+          "type": "EndCycle",
+          "name": "end_cycle"
+        }
+      ],
+      "on_success": "CooldownGate",
+      "on_failure": "CooldownGate"
+    }
+  ],
+  "key": "alliance_help",
+  "label": "Alliance Help",
+  "metadata": {
+    "category": "Support & Utilities",
+    "badge": "Support",
+    "description": "Clicks the alliance help button whenever it is available and idles until the next cooldown.",
+    "tags": [
+      "alliance",
+      "help",
+      "support"
+    ]
+  },
+  "context": "default"
+}
