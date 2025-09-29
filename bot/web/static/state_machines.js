@@ -50,10 +50,20 @@
     selectedStep: null,
     dragging: null,
     dirty: false,
-    stepDraftDirty: false
+    stepDraftDirty: false,
+    panning: null,
+    viewport: null,
+    baseViewport: null,
+    viewportKey: null,
+    diagramLayers: { links: null, nodes: null }
   };
 
   const actionEditors = {};
+
+  state.baseViewport = parseViewBox(els.diagram ? els.diagram.getAttribute('viewBox') : null);
+  state.viewport = Object.assign({}, state.baseViewport);
+  applyViewBox();
+  setupDiagramPanHandlers();
 
   function fetchJSON(url, options = {}) {
     return fetch(url, Object.assign({
@@ -132,6 +142,126 @@
       if (stored && typeof stored.x === 'number' && typeof stored.y === 'number') {
         step.layout = { x: stored.x, y: stored.y };
       }
+    });
+  }
+
+  function parseViewBox(value) {
+    if (!value) {
+      return { x: 0, y: 0, width: 960, height: 640 };
+    }
+    const parts = value.trim().split(/[\s,]+/).map(Number).filter(num => !Number.isNaN(num));
+    if (parts.length < 4) {
+      return { x: 0, y: 0, width: 960, height: 640 };
+    }
+    return {
+      x: parts[0],
+      y: parts[1],
+      width: parts[2],
+      height: parts[3]
+    };
+  }
+
+  function applyViewBox() {
+    if (!els.diagram || !state.viewport) return;
+    const { x, y, width, height } = state.viewport;
+    els.diagram.setAttribute('viewBox', `${x} ${y} ${width} ${height}`);
+  }
+
+  function setViewport(x, y) {
+    if (!state.viewport) return;
+    state.viewport.x = x;
+    state.viewport.y = y;
+    applyViewBox();
+  }
+
+  function resetViewport() {
+    if (!state.baseViewport) return;
+    state.viewport = Object.assign({}, state.baseViewport);
+    applyViewBox();
+  }
+
+  function ensureViewportForMachine(machine) {
+    if (!machine) return;
+    const key = machine.key ? `machine:${machine.key}` : `machine:${state.isNew ? 'new' : 'untitled'}`;
+    if (state.viewportKey !== key) {
+      resetViewport();
+      state.viewportKey = key;
+    }
+  }
+
+  function getDiagramWrapper() {
+    if (!els.diagram) return null;
+    return els.diagram.closest('.diagram-wrapper');
+  }
+
+  function togglePanningClass(active) {
+    const wrapper = getDiagramWrapper();
+    if (wrapper) {
+      wrapper.classList.toggle('is-panning', !!active);
+    }
+    if (els.diagram) {
+      els.diagram.classList.toggle('is-panning', !!active);
+    }
+  }
+
+  function diagramPoint(evt) {
+    if (!els.diagram) return { x: 0, y: 0 };
+    const pt = els.diagram.createSVGPoint();
+    pt.x = evt.clientX;
+    pt.y = evt.clientY;
+    const ctm = els.diagram.getScreenCTM();
+    if (!ctm) return { x: 0, y: 0 };
+    const mapped = pt.matrixTransform(ctm.inverse());
+    return { x: mapped.x, y: mapped.y };
+  }
+
+  function setupDiagramPanHandlers() {
+    if (!els.diagram) return;
+    els.diagram.addEventListener('pointerdown', evt => {
+      if (evt.button !== 0) return;
+      if (evt.target && typeof evt.target.closest === 'function' && evt.target.closest('.diagram-node')) {
+        return;
+      }
+      evt.preventDefault();
+      const start = diagramPoint(evt);
+      state.panning = {
+        pointerId: evt.pointerId,
+        start,
+        originX: state.viewport ? state.viewport.x : 0,
+        originY: state.viewport ? state.viewport.y : 0
+      };
+      try {
+        els.diagram.setPointerCapture(evt.pointerId);
+      } catch (err) {
+        // ignore capture failures
+      }
+      togglePanningClass(true);
+    });
+    els.diagram.addEventListener('pointermove', evt => {
+      if (!state.panning || state.panning.pointerId !== evt.pointerId) return;
+      evt.preventDefault();
+      const point = diagramPoint(evt);
+      const dx = point.x - state.panning.start.x;
+      const dy = point.y - state.panning.start.y;
+      setViewport(state.panning.originX - dx, state.panning.originY - dy);
+    });
+    const endPan = evt => {
+      if (!state.panning || (evt && state.panning.pointerId !== evt.pointerId)) return;
+      state.panning = null;
+      togglePanningClass(false);
+      if (evt) {
+        try {
+          els.diagram.releasePointerCapture(evt.pointerId);
+        } catch (err) {
+          // ignore release failures
+        }
+      }
+    };
+    els.diagram.addEventListener('pointerup', endPan);
+    els.diagram.addEventListener('pointercancel', endPan);
+    els.diagram.addEventListener('pointerleave', evt => {
+      if (!state.panning || state.panning.pointerId !== evt.pointerId) return;
+      endPan(evt);
     });
   }
 
@@ -1076,6 +1206,12 @@
       els.stepEditor.hidden = true;
       els.stepList.innerHTML = '';
       els.diagram.innerHTML = '<defs><marker id="arrow" markerWidth="10" markerHeight="6" refX="10" refY="3" orient="auto" markerUnits="strokeWidth"><path d="M0,0 L10,3 L0,6 Z" class="diagram-arrow"></path></marker></defs>';
+      state.diagramLayers = { links: null, nodes: null };
+      state.dragging = null;
+      state.panning = null;
+      state.viewportKey = null;
+      resetViewport();
+      togglePanningClass(false);
       if (actionEditors.sequence && actionEditors.sequence.setDraft) {
         actionEditors.sequence.setDraft([]);
       }
@@ -1102,6 +1238,7 @@
     els.tags.value = tags;
 
     if (machine.type === 'graph') {
+      ensureViewportForMachine(machine);
       populateStartOptions();
       toggleStartVisibility(true);
       els.graphEditor.hidden = false;
@@ -1113,6 +1250,7 @@
       toggleStartVisibility(false);
       els.graphEditor.hidden = true;
       els.seqEditor.hidden = false;
+      togglePanningClass(false);
       if (actionEditors.step && actionEditors.step.setDraft) {
         actionEditors.step.setDraft([]);
       }
@@ -1228,8 +1366,10 @@
   function renderDiagram() {
     const machine = state.current;
     if (!machine || machine.type !== 'graph') return;
+    applyViewBox();
     const defs = els.diagram.querySelector('defs');
     els.diagram.innerHTML = '';
+    state.diagramLayers = { links: null, nodes: null };
     if (defs) {
       els.diagram.appendChild(defs);
     } else {
@@ -1249,6 +1389,9 @@
       d.appendChild(marker);
       els.diagram.appendChild(d);
     }
+
+    createDiagramLayers();
+    const nodeLayer = state.diagramLayers.nodes || els.diagram;
 
     machine.steps.forEach(step => {
       const group = document.createElementNS(svgNS, 'g');
@@ -1273,7 +1416,7 @@
       text.textContent = step.name;
       group.appendChild(rect);
       group.appendChild(text);
-      els.diagram.appendChild(group);
+      nodeLayer.appendChild(group);
       attachDragHandlers(group, step);
       group.addEventListener('click', evt => {
         evt.preventDefault();
@@ -1301,8 +1444,15 @@
   }
 
   function refreshConnections() {
-    const links = Array.from(els.diagram.querySelectorAll('.diagram-link'));
-    links.forEach(link => link.remove());
+    const layer = state.diagramLayers && state.diagramLayers.links;
+    if (layer) {
+      while (layer.firstChild) {
+        layer.removeChild(layer.firstChild);
+      }
+    } else {
+      const links = Array.from(els.diagram.querySelectorAll('.diagram-link'));
+      links.forEach(link => link.remove());
+    }
     renderConnections();
   }
 
@@ -1328,28 +1478,49 @@
     const d = `M ${startX} ${startY} Q ${midX} ${midY} ${endX} ${endY}`;
     group.setAttribute('d', d);
     group.setAttribute('marker-end', 'url(#arrow)');
-    els.diagram.appendChild(group);
+    const layer = state.diagramLayers && state.diagramLayers.links;
+    if (layer) {
+      layer.appendChild(group);
+    } else {
+      els.diagram.appendChild(group);
+    }
+  }
+
+  function createDiagramLayers() {
+    const links = document.createElementNS(svgNS, 'g');
+    links.setAttribute('class', 'diagram-links');
+    const nodes = document.createElementNS(svgNS, 'g');
+    nodes.setAttribute('class', 'diagram-nodes');
+    els.diagram.appendChild(links);
+    els.diagram.appendChild(nodes);
+    state.diagramLayers = { links, nodes };
   }
 
   function attachDragHandlers(group, step) {
     const rect = group.querySelector('rect');
     if (!rect) return;
-    rect.style.cursor = 'move';
+    rect.style.cursor = 'grab';
     group.addEventListener('pointerdown', evt => {
+      if (evt.button !== 0) return;
       evt.preventDefault();
-      const svgRect = els.diagram.getBoundingClientRect();
-      const offsetX = evt.clientX - svgRect.left - step.layout.x;
-      const offsetY = evt.clientY - svgRect.top - step.layout.y;
-      state.dragging = { step, offsetX, offsetY };
-      group.setPointerCapture(evt.pointerId);
+      evt.stopPropagation();
+      const point = diagramPoint(evt);
+      const offsetX = point.x - step.layout.x;
+      const offsetY = point.y - step.layout.y;
+      state.dragging = { step, offsetX, offsetY, pointerId: evt.pointerId };
+      try {
+        group.setPointerCapture(evt.pointerId);
+      } catch (err) {
+        // ignore capture failures
+      }
+      group.classList.add('dragging');
     });
     group.addEventListener('pointermove', evt => {
-      if (!state.dragging || state.dragging.step !== step) return;
-      const svgRect = els.diagram.getBoundingClientRect();
-      const newX = evt.clientX - svgRect.left - state.dragging.offsetX;
-      const newY = evt.clientY - svgRect.top - state.dragging.offsetY;
-      step.layout.x = Math.max(10, Math.min(900, newX));
-      step.layout.y = Math.max(10, Math.min(560, newY));
+      if (!state.dragging || state.dragging.step !== step || state.dragging.pointerId !== evt.pointerId) return;
+      evt.preventDefault();
+      const point = diagramPoint(evt);
+      step.layout.x = point.x - state.dragging.offsetX;
+      step.layout.y = point.y - state.dragging.offsetY;
       rect.setAttribute('x', step.layout.x);
       rect.setAttribute('y', step.layout.y);
       const text = group.querySelector('text');
@@ -1360,23 +1531,21 @@
       state.dirty = true;
       refreshConnections();
     });
-    group.addEventListener('pointerup', evt => {
-      if (state.dragging && state.dragging.step === step) {
-        state.dragging = null;
-        group.releasePointerCapture(evt.pointerId);
-        if (state.current && state.current.type === 'graph') {
-          saveLayoutToStorage(state.current);
-        }
+    const endDrag = evt => {
+      if (!state.dragging || state.dragging.step !== step || (evt && state.dragging.pointerId !== evt.pointerId)) return;
+      try {
+        group.releasePointerCapture(state.dragging.pointerId);
+      } catch (err) {
+        // ignore release failures
       }
-    });
-    group.addEventListener('pointerleave', evt => {
-      if (state.dragging && state.dragging.step === step && evt.buttons === 0) {
-        state.dragging = null;
-        if (state.current && state.current.type === 'graph') {
-          saveLayoutToStorage(state.current);
-        }
+      state.dragging = null;
+      group.classList.remove('dragging');
+      if (state.current && state.current.type === 'graph') {
+        saveLayoutToStorage(state.current);
       }
-    });
+    };
+    group.addEventListener('pointerup', endDrag);
+    group.addEventListener('pointercancel', endDrag);
   }
 
   function applyStepChanges(silent = false) {
