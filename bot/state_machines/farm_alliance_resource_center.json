@@ -1,10 +1,10 @@
 {
   "type": "graph",
-  "start": "OpenAlliance",
+  "start": "OpenAlliancePanel",
   "loop_sleep_s": 0.05,
   "steps": [
     {
-      "name": "OpenAlliance",
+      "name": "OpenAlliancePanel",
       "actions": [
         {
           "type": "Screenshot",
@@ -36,11 +36,11 @@
           "randomize": true
         }
       ],
-      "on_success": "OpenTerritory",
-      "on_failure": "OpenMenuForAlliance"
+      "on_success": "OpenTerritoryPanel",
+      "on_failure": "RevealAllianceMenu"
     },
     {
-      "name": "OpenMenuForAlliance",
+      "name": "RevealAllianceMenu",
       "actions": [
         {
           "type": "Screenshot",
@@ -72,11 +72,11 @@
           "randomize": true
         }
       ],
-      "on_success": "OpenAllianceRetry",
-      "on_failure": "Stop"
+      "on_success": "RetryOpenAlliance",
+      "on_failure": "CompleteCycle"
     },
     {
-      "name": "OpenAllianceRetry",
+      "name": "RetryOpenAlliance",
       "actions": [
         {
           "type": "Screenshot",
@@ -108,11 +108,11 @@
           "randomize": true
         }
       ],
-      "on_success": "OpenTerritory",
-      "on_failure": "Stop"
+      "on_success": "OpenTerritoryPanel",
+      "on_failure": "CompleteCycle"
     },
     {
-      "name": "OpenTerritory",
+      "name": "OpenTerritoryPanel",
       "actions": [
         {
           "type": "Screenshot",
@@ -144,11 +144,11 @@
           "randomize": true
         }
       ],
-      "on_success": "Hide1",
-      "on_failure": "Stop"
+      "on_success": "HideTerritoryFirstAttempt",
+      "on_failure": "CompleteCycle"
     },
     {
-      "name": "Hide1",
+      "name": "HideTerritoryFirstAttempt",
       "actions": [
         {
           "type": "Screenshot",
@@ -180,11 +180,11 @@
           "randomize": true
         }
       ],
-      "on_success": "Hide2",
-      "on_failure": "AfterHide"
+      "on_success": "HideTerritorySecondAttempt",
+      "on_failure": "OpenResourceCentersList"
     },
     {
-      "name": "Hide2",
+      "name": "HideTerritorySecondAttempt",
       "actions": [
         {
           "type": "Screenshot",
@@ -216,11 +216,11 @@
           "randomize": true
         }
       ],
-      "on_success": "Hide3",
-      "on_failure": "AfterHide"
+      "on_success": "HideTerritoryThirdAttempt",
+      "on_failure": "OpenResourceCentersList"
     },
     {
-      "name": "Hide3",
+      "name": "HideTerritoryThirdAttempt",
       "actions": [
         {
           "type": "Screenshot",
@@ -252,11 +252,11 @@
           "randomize": true
         }
       ],
-      "on_success": "Hide4",
-      "on_failure": "AfterHide"
+      "on_success": "HideTerritoryFourthAttempt",
+      "on_failure": "OpenResourceCentersList"
     },
     {
-      "name": "Hide4",
+      "name": "HideTerritoryFourthAttempt",
       "actions": [
         {
           "type": "Screenshot",
@@ -288,11 +288,11 @@
           "randomize": true
         }
       ],
-      "on_success": "Hide5",
-      "on_failure": "AfterHide"
+      "on_success": "HideTerritoryFifthAttempt",
+      "on_failure": "OpenResourceCentersList"
     },
     {
-      "name": "Hide5",
+      "name": "HideTerritoryFifthAttempt",
       "actions": [
         {
           "type": "Screenshot",
@@ -324,11 +324,11 @@
           "randomize": true
         }
       ],
-      "on_success": "AfterHide",
-      "on_failure": "AfterHide"
+      "on_success": "OpenResourceCentersList",
+      "on_failure": "OpenResourceCentersList"
     },
     {
-      "name": "AfterHide",
+      "name": "OpenResourceCentersList",
       "actions": [
         {
           "type": "Screenshot",
@@ -360,11 +360,11 @@
           "randomize": true
         }
       ],
-      "on_success": "ClickPlus",
-      "on_failure": "Stop"
+      "on_success": "OpenCreateLegionPanel",
+      "on_failure": "CompleteCycle"
     },
     {
-      "name": "ClickPlus",
+      "name": "OpenCreateLegionPanel",
       "actions": [
         {
           "type": "Screenshot",
@@ -396,11 +396,11 @@
           "randomize": true
         }
       ],
-      "on_success": "CreateLegions",
-      "on_failure": "Stop"
+      "on_success": "ClickCreateLegions",
+      "on_failure": "CompleteCycle"
     },
     {
-      "name": "CreateLegions",
+      "name": "ClickCreateLegions",
       "actions": [
         {
           "type": "Screenshot",
@@ -429,11 +429,11 @@
           "randomize": true
         }
       ],
-      "on_success": "RemoveCommander",
-      "on_failure": "FallbackCenter"
+      "on_success": "RemoveCommanderFromLegion",
+      "on_failure": "FallbackTapCenter"
     },
     {
-      "name": "FallbackCenter",
+      "name": "FallbackTapCenter",
       "actions": [
         {
           "type": "Screenshot",
@@ -452,11 +452,11 @@
           "randomize": true
         }
       ],
-      "on_success": "FallbackGather",
-      "on_failure": "FallbackGather"
+      "on_success": "FallbackTapGather",
+      "on_failure": "FallbackTapGather"
     },
     {
-      "name": "FallbackGather",
+      "name": "FallbackTapGather",
       "actions": [
         {
           "type": "Screenshot",
@@ -485,11 +485,11 @@
           "randomize": true
         }
       ],
-      "on_success": "FallbackOpenIcon",
-      "on_failure": "Stop"
+      "on_success": "FallbackOpenCreateLegionIcon",
+      "on_failure": "CompleteCycle"
     },
     {
-      "name": "FallbackOpenIcon",
+      "name": "FallbackOpenCreateLegionIcon",
       "actions": [
         {
           "type": "Screenshot",
@@ -521,11 +521,11 @@
           "randomize": true
         }
       ],
-      "on_success": "CreateLegions",
-      "on_failure": "Stop"
+      "on_success": "ClickCreateLegions",
+      "on_failure": "CompleteCycle"
     },
     {
-      "name": "RemoveCommander",
+      "name": "RemoveCommanderFromLegion",
       "actions": [
         {
           "type": "Screenshot",
@@ -557,11 +557,11 @@
           "randomize": true
         }
       ],
-      "on_success": "March",
-      "on_failure": "March"
+      "on_success": "ClickMarchButton",
+      "on_failure": "ClickMarchButton"
     },
     {
-      "name": "March",
+      "name": "ClickMarchButton",
       "actions": [
         {
           "type": "Screenshot",
@@ -590,11 +590,11 @@
           "randomize": true
         }
       ],
-      "on_success": "Stop",
-      "on_failure": "Stop"
+      "on_success": "CompleteCycle",
+      "on_failure": "CompleteCycle"
     },
     {
-      "name": "Stop",
+      "name": "CompleteCycle",
       "actions": [
         {
           "type": "EndCycle",

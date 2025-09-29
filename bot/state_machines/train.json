@@ -12,11 +12,11 @@
           "key": "train"
         }
       ],
-      "on_success": "CheckActionsMenu",
+      "on_success": "CheckIfActionsMenuClosed",
       "on_failure": "CooldownGate"
     },
     {
-      "name": "CheckActionsMenu",
+      "name": "CheckIfActionsMenuClosed",
       "actions": [
         {
           "type": "Wait",
@@ -45,11 +45,11 @@
           }
         }
       ],
-      "on_success": "OpenActionsMenu",
-      "on_failure": "CheckSectionsMinimized"
+      "on_success": "OpenActionsMenuPanel",
+      "on_failure": "VerifySectionsCollapsedInitial"
     },
     {
-      "name": "OpenActionsMenu",
+      "name": "OpenActionsMenuPanel",
       "actions": [
         {
           "type": "Screenshot",
@@ -78,11 +78,11 @@
           "randomize": true
         }
       ],
-      "on_success": "CheckSectionsMinimized",
-      "on_failure": "CheckSectionsMinimized"
+      "on_success": "VerifySectionsCollapsedInitial",
+      "on_failure": "VerifySectionsCollapsedInitial"
     },
     {
-      "name": "CheckSectionsMinimized",
+      "name": "VerifySectionsCollapsedInitial",
       "actions": [
         {
           "type": "Screenshot",
@@ -105,11 +105,11 @@
           }
         }
       ],
-      "on_success": "ClickDoneNotification",
-      "on_failure": "MinimizeFirst"
+      "on_success": "AcknowledgeTrainingCompletion",
+      "on_failure": "CollapseSectionsFirstPass"
     },
     {
-      "name": "MinimizeFirst",
+      "name": "CollapseSectionsFirstPass",
       "actions": [
         {
           "type": "Screenshot",
@@ -138,11 +138,11 @@
           "randomize": true
         }
       ],
-      "on_success": "CheckSectionsMinimized2",
-      "on_failure": "CheckSectionsMinimized2"
+      "on_success": "VerifySectionsCollapsedAfterFirst",
+      "on_failure": "VerifySectionsCollapsedAfterFirst"
     },
     {
-      "name": "CheckSectionsMinimized2",
+      "name": "VerifySectionsCollapsedAfterFirst",
       "actions": [
         {
           "type": "Screenshot",
@@ -165,11 +165,11 @@
           }
         }
       ],
-      "on_success": "ClickDoneNotification",
-      "on_failure": "MinimizeSecond"
+      "on_success": "AcknowledgeTrainingCompletion",
+      "on_failure": "CollapseSectionsSecondPass"
     },
     {
-      "name": "MinimizeSecond",
+      "name": "CollapseSectionsSecondPass",
       "actions": [
         {
           "type": "Screenshot",
@@ -198,11 +198,11 @@
           "randomize": true
         }
       ],
-      "on_success": "ClickDoneNotification",
-      "on_failure": "ClickDoneNotification"
+      "on_success": "AcknowledgeTrainingCompletion",
+      "on_failure": "AcknowledgeTrainingCompletion"
     },
     {
-      "name": "ClickDoneNotification",
+      "name": "AcknowledgeTrainingCompletion",
       "actions": [
         {
           "type": "Screenshot",
@@ -230,11 +230,11 @@
           "randomize": true
         }
       ],
-      "on_success": "ClickTrainType",
-      "on_failure": "CooldownAndEnd"
+      "on_success": "SelectTrainingType",
+      "on_failure": "ScheduleTrainingCooldown"
     },
     {
-      "name": "ClickTrainType",
+      "name": "SelectTrainingType",
       "actions": [
         {
           "type": "Screenshot",
@@ -271,11 +271,11 @@
           "randomize": true
         }
       ],
-      "on_success": "TryUpgrade",
-      "on_failure": "TryUpgrade"
+      "on_success": "AttemptUpgradeFlow",
+      "on_failure": "AttemptUpgradeFlow"
     },
     {
-      "name": "TryUpgrade",
+      "name": "AttemptUpgradeFlow",
       "actions": [
         {
           "type": "Screenshot",
@@ -304,11 +304,11 @@
           "randomize": true
         }
       ],
-      "on_success": "ClickUpgradeButton",
-      "on_failure": "ClickTrain"
+      "on_success": "PressUpgradeButton",
+      "on_failure": "StartTrainingRun"
     },
     {
-      "name": "ClickUpgradeButton",
+      "name": "PressUpgradeButton",
       "actions": [
         {
           "type": "Screenshot",
@@ -340,11 +340,11 @@
           "randomize": true
         }
       ],
-      "on_success": "ClickPromoteButton",
-      "on_failure": "ClickTrain"
+      "on_success": "PressPromoteButton",
+      "on_failure": "StartTrainingRun"
     },
     {
-      "name": "ClickPromoteButton",
+      "name": "PressPromoteButton",
       "actions": [
         {
           "type": "Screenshot",
@@ -376,11 +376,11 @@
           "randomize": true
         }
       ],
-      "on_success": "End",
-      "on_failure": "End"
+      "on_success": "CompleteTrainingCycle",
+      "on_failure": "CompleteTrainingCycle"
     },
     {
-      "name": "ClickTrain",
+      "name": "StartTrainingRun",
       "actions": [
         {
           "type": "Screenshot",
@@ -412,11 +412,11 @@
           "randomize": true
         }
       ],
-      "on_success": "CheckActionsMenu",
-      "on_failure": "End"
+      "on_success": "CheckIfActionsMenuClosed",
+      "on_failure": "CompleteTrainingCycle"
     },
     {
-      "name": "CooldownAndEnd",
+      "name": "ScheduleTrainingCooldown",
       "actions": [
         {
           "type": "SetCooldownRandom",
@@ -432,11 +432,11 @@
           }
         }
       ],
-      "on_success": "End",
-      "on_failure": "End"
+      "on_success": "CompleteTrainingCycle",
+      "on_failure": "CompleteTrainingCycle"
     },
     {
-      "name": "End",
+      "name": "CompleteTrainingCycle",
       "actions": [
         {
           "type": "EndCycle",
