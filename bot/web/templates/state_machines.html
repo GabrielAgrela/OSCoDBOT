@@ -84,6 +84,12 @@
           </form>
           <div id="sm-graph-editor" class="graph-editor" hidden>
             <div class="diagram-wrapper">
+              <div class="diagram-toolbar" role="group" aria-label="Diagram controls">
+                <button id="diagram-zoom-out" type="button" class="icon-button" aria-label="Zoom out">−</button>
+                <span id="diagram-zoom-level" class="diagram-zoom-level">100%</span>
+                <button id="diagram-zoom-in" type="button" class="icon-button" aria-label="Zoom in">+</button>
+                <button id="diagram-zoom-fit" type="button" class="icon-button diagram-fit" aria-label="Fit to screen">Fit</button>
+              </div>
               <svg id="diagram-canvas" viewBox="0 0 960 640" preserveAspectRatio="xMidYMid meet">
                 <defs>
                   <marker id="arrow" markerWidth="10" markerHeight="6" refX="10" refY="3" orient="auto" markerUnits="strokeWidth">
@@ -144,6 +150,6 @@
         </section>
       </div>
     </div>
-    <script src="/static/state_machines.js?v=2"></script>
+    <script src="/static/state_machines.js?v=3"></script>
   </body>
 </html>

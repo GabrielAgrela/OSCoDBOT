@@ -39,7 +39,11 @@
     stepActionsJson: document.getElementById('step-actions-json'),
     stepApply: document.getElementById('step-apply'),
     stepDelete: document.getElementById('step-delete'),
-    stepAdd: document.getElementById('step-add')
+    stepAdd: document.getElementById('step-add'),
+    zoomIn: document.getElementById('diagram-zoom-in'),
+    zoomOut: document.getElementById('diagram-zoom-out'),
+    zoomFit: document.getElementById('diagram-zoom-fit'),
+    zoomLevel: document.getElementById('diagram-zoom-level')
   };
 
   const state = {
@@ -54,16 +58,26 @@
     panning: null,
     viewport: null,
     baseViewport: null,
+    defaultViewport: null,
     viewportKey: null,
-    diagramLayers: { links: null, nodes: null }
+    diagramLayers: { links: null, nodes: null },
+    zoom: 1
   };
 
   const actionEditors = {};
 
-  state.baseViewport = parseViewBox(els.diagram ? els.diagram.getAttribute('viewBox') : null);
+  const ZOOM_MIN = 0.25;
+  const ZOOM_MAX = 4;
+  const ZOOM_STEP = 1.2;
+
+  state.defaultViewport = parseViewBox(els.diagram ? els.diagram.getAttribute('viewBox') : null);
+  state.baseViewport = Object.assign({}, state.defaultViewport);
   state.viewport = Object.assign({}, state.baseViewport);
+  state.zoom = 1;
   applyViewBox();
   setupDiagramPanHandlers();
+  setupZoomHandlers();
+  updateZoomLabel();
 
   function fetchJSON(url, options = {}) {
     return fetch(url, Object.assign({
@@ -175,17 +189,23 @@
   }
 
   function resetViewport() {
-    if (!state.baseViewport) return;
-    state.viewport = Object.assign({}, state.baseViewport);
+    const base = state.baseViewport || state.defaultViewport || { x: 0, y: 0, width: 960, height: 640 };
+    state.baseViewport = Object.assign({}, base);
+    state.viewport = Object.assign({}, base);
+    state.zoom = 1;
     applyViewBox();
+    updateZoomLabel();
   }
 
   function ensureViewportForMachine(machine) {
     if (!machine) return;
     const key = machine.key ? `machine:${machine.key}` : `machine:${state.isNew ? 'new' : 'untitled'}`;
     if (state.viewportKey !== key) {
-      resetViewport();
       state.viewportKey = key;
+      fitViewToMachine(machine);
+    } else {
+      applyViewBox();
+      updateZoomLabel();
     }
   }
 
@@ -210,7 +230,7 @@
     pt.x = evt.clientX;
     pt.y = evt.clientY;
     const ctm = els.diagram.getScreenCTM();
-    if (!ctm) return { x: 0, y: 0 };
+    if (!ctm) return getViewportCenter();
     const mapped = pt.matrixTransform(ctm.inverse());
     return { x: mapped.x, y: mapped.y };
   }
@@ -263,6 +283,170 @@
       if (!state.panning || state.panning.pointerId !== evt.pointerId) return;
       endPan(evt);
     });
+  }
+
+  function updateZoomLabel() {
+    if (!els.zoomLevel) return;
+    const value = Math.max(ZOOM_MIN, Math.min(ZOOM_MAX, state.zoom || 1));
+    const percent = Math.round(value * 100);
+    els.zoomLevel.textContent = `${percent}%`;
+  }
+
+  function getViewportCenter() {
+    if (!state.viewport) {
+      const base = state.baseViewport || state.defaultViewport || { x: 0, y: 0, width: 960, height: 640 };
+      state.viewport = Object.assign({}, base);
+    }
+    return {
+      x: state.viewport.x + state.viewport.width / 2,
+      y: state.viewport.y + state.viewport.height / 2
+    };
+  }
+
+  function clampZoom(value) {
+    return Math.min(ZOOM_MAX, Math.max(ZOOM_MIN, value));
+  }
+
+  function setZoomLevel(nextZoom, origin) {
+    const focus = origin || getViewportCenter();
+    if (!state.baseViewport) {
+      const fallback = state.defaultViewport || { x: 0, y: 0, width: 960, height: 640 };
+      state.baseViewport = Object.assign({}, fallback);
+    }
+    if (!state.viewport) {
+      state.viewport = Object.assign({}, state.baseViewport);
+    }
+    const clamped = clampZoom(nextZoom);
+    const current = state.zoom || 1;
+    if (Math.abs(clamped - current) < 0.001) {
+      state.zoom = clamped;
+      updateZoomLabel();
+      return;
+    }
+    const baseWidth = state.baseViewport.width || (state.viewport.width || 960);
+    const baseHeight = state.baseViewport.height || (state.viewport.height || 640);
+    const prevWidth = state.viewport.width || (baseWidth / current);
+    const prevHeight = state.viewport.height || (baseHeight / current);
+    const newWidth = baseWidth / clamped;
+    const newHeight = baseHeight / clamped;
+    const ratioX = prevWidth ? (focus.x - state.viewport.x) / prevWidth : 0.5;
+    const ratioY = prevHeight ? (focus.y - state.viewport.y) / prevHeight : 0.5;
+    state.viewport.width = newWidth;
+    state.viewport.height = newHeight;
+    state.viewport.x = focus.x - ratioX * newWidth;
+    state.viewport.y = focus.y - ratioY * newHeight;
+    state.zoom = clamped;
+    applyViewBox();
+    updateZoomLabel();
+  }
+
+  function changeZoom(factor, origin) {
+    if (!Number.isFinite(factor) || factor <= 0) return;
+    const current = state.zoom || 1;
+    setZoomLevel(current * factor, origin || getViewportCenter());
+  }
+
+  function computeDiagramBounds(machine) {
+    if (!machine || machine.type !== 'graph' || !Array.isArray(machine.steps) || machine.steps.length === 0) {
+      return null;
+    }
+    let minX = Number.POSITIVE_INFINITY;
+    let minY = Number.POSITIVE_INFINITY;
+    let maxX = Number.NEGATIVE_INFINITY;
+    let maxY = Number.NEGATIVE_INFINITY;
+    machine.steps.forEach(step => {
+      if (!step || !step.layout) return;
+      const x = typeof step.layout.x === 'number' ? step.layout.x : 0;
+      const y = typeof step.layout.y === 'number' ? step.layout.y : 0;
+      const width = 140;
+      const height = 60;
+      minX = Math.min(minX, x);
+      minY = Math.min(minY, y);
+      maxX = Math.max(maxX, x + width);
+      maxY = Math.max(maxY, y + height);
+    });
+    if (!Number.isFinite(minX) || !Number.isFinite(minY) || !Number.isFinite(maxX) || !Number.isFinite(maxY)) {
+      return null;
+    }
+    return { minX, minY, maxX, maxY };
+  }
+
+  function fitViewToMachine(machine) {
+    if (!els.diagram) return;
+    const bounds = computeDiagramBounds(machine);
+    const padding = 120;
+    let base;
+    if (bounds) {
+      const rect = els.diagram.getBoundingClientRect();
+      const width = Math.max(bounds.maxX - bounds.minX, 10);
+      const height = Math.max(bounds.maxY - bounds.minY, 10);
+      const paddedWidth = width + padding * 2;
+      const paddedHeight = height + padding * 2;
+      let viewWidth = paddedWidth;
+      let viewHeight = paddedHeight;
+      if (rect.width > 0 && rect.height > 0) {
+        const aspect = rect.width / rect.height;
+        const boundsAspect = paddedWidth / paddedHeight;
+        if (boundsAspect < aspect) {
+          viewWidth = paddedHeight * aspect;
+          viewHeight = paddedHeight;
+        } else {
+          viewHeight = paddedWidth / aspect;
+          viewWidth = paddedWidth;
+        }
+      }
+      if (!Number.isFinite(viewWidth) || viewWidth <= 0) viewWidth = paddedWidth;
+      if (!Number.isFinite(viewHeight) || viewHeight <= 0) viewHeight = paddedHeight;
+      const centerX = (bounds.minX + bounds.maxX) / 2;
+      const centerY = (bounds.minY + bounds.maxY) / 2;
+      base = {
+        x: centerX - viewWidth / 2,
+        y: centerY - viewHeight / 2,
+        width: viewWidth,
+        height: viewHeight
+      };
+    } else {
+      base = Object.assign({}, state.defaultViewport || { x: 0, y: 0, width: 960, height: 640 });
+    }
+    state.baseViewport = Object.assign({}, base);
+    state.viewport = Object.assign({}, base);
+    state.zoom = 1;
+    applyViewBox();
+    updateZoomLabel();
+  }
+
+  function setupZoomHandlers() {
+    const wrapper = getDiagramWrapper();
+    if (!wrapper) return;
+    wrapper.addEventListener(
+      'wheel',
+      evt => {
+        if (!evt) return;
+        const delta = evt.deltaY || 0;
+        if (delta === 0) return;
+        evt.preventDefault();
+        const origin = diagramPoint(evt);
+        const divisor = evt.ctrlKey || evt.metaKey ? 200 : 320;
+        const factor = Math.pow(ZOOM_STEP, -delta / divisor);
+        changeZoom(factor, origin);
+      },
+      { passive: false }
+    );
+    if (els.zoomIn) {
+      els.zoomIn.addEventListener('click', () => changeZoom(ZOOM_STEP));
+    }
+    if (els.zoomOut) {
+      els.zoomOut.addEventListener('click', () => changeZoom(1 / ZOOM_STEP));
+    }
+    if (els.zoomFit) {
+      els.zoomFit.addEventListener('click', () => {
+        if (state.current && state.current.type === 'graph') {
+          fitViewToMachine(state.current);
+        } else {
+          resetViewport();
+        }
+      });
+    }
   }
 
   function loadList() {
@@ -1210,6 +1394,9 @@
       state.dragging = null;
       state.panning = null;
       state.viewportKey = null;
+      state.baseViewport = Object.assign({}, state.defaultViewport || state.baseViewport || { x: 0, y: 0, width: 960, height: 640 });
+      state.viewport = Object.assign({}, state.baseViewport);
+      state.zoom = 1;
       resetViewport();
       togglePanningClass(false);
       if (actionEditors.sequence && actionEditors.sequence.setDraft) {
@@ -1238,11 +1425,11 @@
     els.tags.value = tags;
 
     if (machine.type === 'graph') {
-      ensureViewportForMachine(machine);
-      populateStartOptions();
       toggleStartVisibility(true);
       els.graphEditor.hidden = false;
       els.seqEditor.hidden = true;
+      ensureViewportForMachine(machine);
+      populateStartOptions();
       renderStepList();
       renderDiagram();
       updateStepForm();
@@ -1251,6 +1438,8 @@
       els.graphEditor.hidden = true;
       els.seqEditor.hidden = false;
       togglePanningClass(false);
+      state.zoom = 1;
+      updateZoomLabel();
       if (actionEditors.step && actionEditors.step.setDraft) {
         actionEditors.step.setDraft([]);
       }

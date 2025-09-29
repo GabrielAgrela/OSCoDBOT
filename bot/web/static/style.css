@@ -110,6 +110,12 @@ body { font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, A
 .diagram-wrapper::before { content:""; position:absolute; inset:0; background-image:linear-gradient(0deg, rgba(148,163,184,0.06) 1px, transparent 1px), linear-gradient(90deg, rgba(148,163,184,0.06) 1px, transparent 1px); background-size:48px 48px; pointer-events:none; z-index:0; }
 .diagram-wrapper > * { position:relative; z-index:1; }
 .diagram-wrapper.is-panning { cursor: grabbing; }
+.diagram-toolbar { position:absolute; top:12px; right:12px; display:flex; align-items:center; gap:6px; padding:6px 10px; border-radius:999px; border:1px solid rgba(59,70,87,0.65); background:rgba(10,17,28,0.88); box-shadow:0 10px 28px rgba(8,13,23,0.55); backdrop-filter:blur(6px); }
+.diagram-toolbar .icon-button { background:rgba(15,23,32,0.85); border-color:rgba(148,163,184,0.45); color:#e2e8f0; }
+.diagram-toolbar .icon-button:hover { background:rgba(59,130,246,0.28); border-color:rgba(59,130,246,0.55); }
+.diagram-toolbar .icon-button:active { transform:translateY(1px); }
+.diagram-toolbar .diagram-fit { width:auto; min-width:44px; padding:0 12px; border-radius:999px; font-size:11px; font-weight:600; letter-spacing:.08em; text-transform:uppercase; }
+.diagram-zoom-level { font-size:11px; color:#cbd5f5; font-weight:600; min-width:48px; text-align:center; }
 #diagram-canvas { width:100%; height:100%; background:linear-gradient(180deg,#0f1f36,#132641); border-radius:10px; touch-action:none; }
 #diagram-canvas.is-panning { cursor: grabbing; }
 .diagram-node rect { fill:#173352; stroke:rgba(148,163,184,0.75); stroke-width:2.4; rx:10; ry:10; filter:drop-shadow(0 8px 18px rgba(15,23,42,0.45)); }
