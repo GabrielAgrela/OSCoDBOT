@@ -1722,7 +1722,7 @@
 
     const arrow = document.createElementNS(svgNS, 'path');
     arrow.setAttribute('class', `diagram-arrow ${kind}`);
-    arrow.setAttribute('d', 'M 0 0 L -12 5 L -12 -5 Z');
+    arrow.setAttribute('d', 'M 0 0 L -24 10 L -24 -10 Z');
     const angle = Math.atan2(ny, nx) * (180 / Math.PI);
     const arrowOffset = 2;
     const arrowX = endPoint.x + nx * arrowOffset;

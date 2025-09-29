@@ -127,7 +127,7 @@ body { font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, A
 .diagram-link { fill:none; stroke:rgba(148,163,184,0.78); stroke-width:3; pointer-events:none; stroke-linecap:round; }
 .diagram-link.success { stroke:#22c55e; }
 .diagram-link.failure { stroke:#ef4444; }
-.diagram-arrow { fill:rgba(148,163,184,0.95); stroke:#0f172a; stroke-width:0.9; pointer-events:none; stroke-linejoin:round; }
+.diagram-arrow { fill:rgba(148,163,184,0.95); stroke:#0f172a; stroke-width:1.8; pointer-events:none; stroke-linejoin:round; }
 .diagram-arrow.success { fill:#22c55e; }
 .diagram-arrow.failure { fill:#ef4444; }
 .graph-editor { align-items: stretch; }
