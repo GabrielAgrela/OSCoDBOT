@@ -14,7 +14,8 @@ import re
 import bot.config as config
 from bot import settings as settings_store
 from bot.core.state_machine import Context, State, StateMachine
-from bot.states import MODES as STATE_MODES, build_alternating_state, build_round_robin_state, build_with_checkstuck_state
+import bot.states as state_registry
+from bot.states import build_alternating_state, build_round_robin_state, build_with_checkstuck_state
 from bot.state_machines import loader as state_loader
 from bot.core import logs
 from bot.core import counters as _counters
@@ -103,6 +104,10 @@ _STATE_DIR = state_loader.get_state_dir()
 _STATE_KEY_RE = re.compile(r"^[A-Za-z0-9_\-]+$")
 
 
+def _state_modes():
+    return state_registry.get_mode_registry()
+
+
 def _load_state_definition(key: str) -> Dict[str, object]:
     try:
         data = state_loader.load_definition(key)
@@ -134,7 +139,7 @@ def _state_label(key: str, fallback: str) -> str:
 
 def _build_mode_payload() -> List[Dict[str, object]]:
     payload: List[Dict[str, object]] = []
-    for key, (fallback_label, _builder) in STATE_MODES.items():
+    for key, (fallback_label, _builder) in _state_modes().items():
         meta = _merge_metadata(key)
         tags = list(meta.get("tags", [])) if isinstance(meta.get("tags"), list) else []
         if not tags:
@@ -290,9 +295,10 @@ def _restart_with_current_selection() -> bool:
     # Recreate with latest configuration
     cfg = config.DEFAULT_CONFIG
     try:
+        modes = _state_modes()
         if len(selection) == 1:
             key = selection[0]
-            fallback_label, builder = STATE_MODES[key]
+            fallback_label, builder = modes[key]
             label = _state_label(key, fallback_label)
             state, ctx = build_with_checkstuck_state(cfg, builder, label=label)
             mach = StateMachine(state)
@@ -312,7 +318,7 @@ def _restart_with_current_selection() -> bool:
                 last_window_seen_ts=start_ts,
             )
         else:
-            builders = [(_state_label(k, STATE_MODES[k][0]), STATE_MODES[k][1]) for k in selection]
+            builders = [(_state_label(k, modes[k][0]), modes[k][1]) for k in selection]
             state, ctx = build_round_robin_state(cfg, builders)
             mach = StateMachine(state)
             mach.start(ctx)
@@ -559,7 +565,8 @@ def api_start():
     global _running
     data = request.get_json(silent=True) or {}
     selection: List[str] = list(data.get("selection") or [])
-    selection = [s for s in selection if s in STATE_MODES]
+    modes = _state_modes()
+    selection = [s for s in selection if s in modes]
     if not selection:
         return jsonify({"error": "No valid modes selected"}), 400
     _stop_running()
@@ -670,7 +677,7 @@ def api_start():
             return
     if len(selection) == 1:
         key = selection[0]
-        fallback_label, builder = STATE_MODES[key]
+        fallback_label, builder = modes[key]
         label = _state_label(key, fallback_label)
         # Wrap with checkstuck so it runs after each cycle; pass label for pink switch logs
         state, ctx = build_with_checkstuck_state(cfg, builder, label=label)
@@ -696,7 +703,7 @@ def api_start():
         )
         return jsonify({"ok": True, "kind": "single", "modes": selection})
     # 2+ selections: run round-robin in selection order
-    builders = [(_state_label(k, STATE_MODES[k][0]), STATE_MODES[k][1]) for k in selection]
+    builders = [(_state_label(k, modes[k][0]), modes[k][1]) for k in selection]
     state, ctx = build_round_robin_state(cfg, builders)
     mach = StateMachine(state)
     if initial_hwnd:

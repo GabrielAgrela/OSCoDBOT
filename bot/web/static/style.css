@@ -106,33 +106,35 @@ body { font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, A
 .meta-fieldset { border:1px solid rgba(38,48,65,0.9); border-radius:8px; margin:0; padding:8px; }
 .meta-fieldset legend { padding:0 6px; font-size:11px; text-transform:uppercase; letter-spacing:.08em; opacity:.7; }
 .graph-editor { display:flex; gap:12px; margin-top:12px; flex:1 1 auto; min-height:0; }
-.diagram-wrapper { flex:1 1 auto; min-height:0; border:1px solid var(--bord); border-radius:10px; background:#0b1220; position:relative; overflow:hidden; cursor: grab; }
+.diagram-wrapper { flex:1 1 auto; min-height:0; border:1px solid var(--bord); border-radius:10px; background:#101a2c; position:relative; overflow:hidden; cursor: grab; box-shadow:inset 0 0 0 1px rgba(148,163,184,0.12); }
+.diagram-wrapper::before { content:""; position:absolute; inset:0; background-image:linear-gradient(0deg, rgba(148,163,184,0.06) 1px, transparent 1px), linear-gradient(90deg, rgba(148,163,184,0.06) 1px, transparent 1px); background-size:48px 48px; pointer-events:none; z-index:0; }
+.diagram-wrapper > * { position:relative; z-index:1; }
 .diagram-wrapper.is-panning { cursor: grabbing; }
-#diagram-canvas { width:100%; height:100%; background:linear-gradient(180deg,#0f172a,#111827); border-radius:10px; touch-action:none; }
+#diagram-canvas { width:100%; height:100%; background:linear-gradient(180deg,#0f1f36,#132641); border-radius:10px; touch-action:none; }
 #diagram-canvas.is-panning { cursor: grabbing; }
-.diagram-node rect { fill:#1f2937; stroke:rgba(148,163,184,0.55); stroke-width:2; rx:8; ry:8; }
+.diagram-node rect { fill:#173352; stroke:rgba(148,163,184,0.75); stroke-width:2.4; rx:10; ry:10; filter:drop-shadow(0 8px 18px rgba(15,23,42,0.45)); }
 .diagram-node.dragging rect { cursor: grabbing; }
-.diagram-node.start rect { stroke:rgba(59,130,246,0.65); fill:rgba(37,99,235,0.22); }
-.diagram-node.selected rect { stroke:var(--pri); fill:rgba(59,130,246,0.25); }
+.diagram-node.start rect { stroke:rgba(59,130,246,0.85); fill:rgba(37,99,235,0.28); }
+.diagram-node.selected rect { stroke:var(--pri); fill:rgba(59,130,246,0.35); }
 .diagram-node.start.selected rect { stroke:var(--pri2); }
-.diagram-node text { font-size:12px; pointer-events:none; }
-.diagram-link { fill:none; stroke:rgba(148,163,184,0.45); stroke-width:2; pointer-events:none; }
+.diagram-node text { font-size:12px; pointer-events:none; fill:#ecf2ff; font-weight:600; letter-spacing:.01em; }
+.diagram-link { fill:none; stroke:rgba(148,163,184,0.75); stroke-width:2.6; pointer-events:none; }
 .diagram-link.success { stroke:#22c55e; }
 .diagram-link.failure { stroke:#ef4444; }
 .diagram-arrow { fill:currentColor; }
 .graph-editor { align-items: stretch; }
-.step-controls { width:300px; flex:0 0 300px; display:flex; flex-direction:column; gap:8px; max-height:100%; overflow-y:auto; padding-right:4px; }
+.step-controls { width:500px; flex:0 0 500px; display:flex; flex-direction:column; gap:10px; max-height:100%; overflow-y:auto; padding-right:6px; }
 .step-controls::-webkit-scrollbar { width:8px; }
 .step-controls::-webkit-scrollbar-thumb { background:rgba(148,163,184,0.35); border-radius:999px; }
 .step-controls::-webkit-scrollbar-track { background:transparent; }
 .step-list-header { display:flex; justify-content:space-between; align-items:center; }
 .step-list { list-style:none; margin:0; padding:0; display:flex; flex-direction:column; gap:4px; flex:0 0 auto; }
-.step-item { padding:6px 8px; border-radius:6px; border:1px solid rgba(38,48,65,0.85); background:rgba(20,27,34,0.9); cursor:pointer; font-size:12px; }
+.step-item { padding:8px 10px; border-radius:8px; border:1px solid rgba(59,74,103,0.9); background:rgba(20,36,56,0.92); cursor:pointer; font-size:12px; color:#e2e8f0; box-shadow:0 6px 16px rgba(8,13,23,0.35); }
 .step-item.start { border-color:rgba(59,130,246,0.55); background:rgba(37,99,235,0.15); }
 .step-item.start::before { content:"Start"; display:inline-block; margin-right:6px; padding:0 6px; border-radius:999px; background:rgba(59,130,246,0.25); color:#bfdbfe; font-size:10px; text-transform:uppercase; letter-spacing:.05em; }
-.step-item.selected { border-color:var(--pri); background:rgba(59,130,246,0.25); }
+.step-item.selected { border-color:var(--pri); background:rgba(59,130,246,0.3); box-shadow:0 10px 20px rgba(37,99,235,0.25); }
 .step-item.start.selected { border-color:var(--pri2); }
-.step-editor { display:flex; flex-direction:column; gap:8px; border:1px solid rgba(38,48,65,0.85); border-radius:8px; padding:10px; background:rgba(13,18,27,0.95); flex:0 0 auto; }
+.step-editor { display:flex; flex-direction:column; gap:10px; border:1px solid rgba(59,74,103,0.85); border-radius:10px; padding:12px; background:rgba(12,21,35,0.95); flex:0 0 auto; box-shadow:0 10px 24px rgba(8,13,23,0.4); }
 .step-editor label { display:flex; flex-direction:column; gap:4px; font-size:12px; }
 .step-editor input, .step-editor select, .step-editor textarea { background:#1f2937; border:1px solid var(--bord); color:var(--fg); border-radius:6px; padding:6px; font-size:12px; }
 .step-editor textarea { resize:vertical; min-height:120px; }
