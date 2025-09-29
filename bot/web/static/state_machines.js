@@ -1635,17 +1635,50 @@
   function drawLink(fromStep, toName, kind) {
     const target = findStep(toName);
     if (!target) return;
+
     const group = document.createElementNS(svgNS, 'path');
     group.setAttribute('class', `diagram-link ${kind}`);
-    const startX = fromStep.layout.x + 140 / 2;
-    const startY = fromStep.layout.y + 60 / 2;
-    const endX = target.layout.x + 140 / 2;
-    const endY = target.layout.y + 60 / 2;
-    const dx = endX - startX;
-    const dy = endY - startY;
-    const midX = startX + dx / 2;
-    const midY = startY + dy / 2 - 40;
-    const d = `M ${startX} ${startY} Q ${midX} ${midY} ${endX} ${endY}`;
+
+    const NODE_WIDTH = 140;
+    const NODE_HEIGHT = 60;
+    const halfWidth = NODE_WIDTH / 2;
+    const halfHeight = NODE_HEIGHT / 2;
+
+    const fromCenter = {
+      x: fromStep.layout.x + halfWidth,
+      y: fromStep.layout.y + halfHeight
+    };
+    const toCenter = {
+      x: target.layout.x + halfWidth,
+      y: target.layout.y + halfHeight
+    };
+
+    const projectEdgePoint = (center, toward) => {
+      const dx = toward.x - center.x;
+      const dy = toward.y - center.y;
+      if (Math.abs(dx) < 1e-6 && Math.abs(dy) < 1e-6) {
+        return { x: center.x, y: center.y };
+      }
+      if (Math.abs(dx) < 1e-6) {
+        return { x: center.x, y: center.y + (dy > 0 ? halfHeight : -halfHeight) };
+      }
+      if (Math.abs(dy) < 1e-6) {
+        return { x: center.x + (dx > 0 ? halfWidth : -halfWidth), y: center.y };
+      }
+      const scale = Math.min(halfWidth / Math.abs(dx), halfHeight / Math.abs(dy));
+      return {
+        x: center.x + dx * scale,
+        y: center.y + dy * scale
+      };
+    };
+
+    const startPoint = projectEdgePoint(fromCenter, toCenter);
+    const endPoint = projectEdgePoint(toCenter, fromCenter);
+    const dx = endPoint.x - startPoint.x;
+    const dy = endPoint.y - startPoint.y;
+    const midX = startPoint.x + dx / 2;
+    const midY = startPoint.y + dy / 2 - 40;
+    const d = `M ${startPoint.x} ${startPoint.y} Q ${midX} ${midY} ${endPoint.x} ${endPoint.y}`;
     group.setAttribute('d', d);
     const markerId = kind === 'success' ? 'arrow-success' : kind === 'failure' ? 'arrow-failure' : 'arrow-neutral';
     group.setAttribute('marker-end', `url(#${markerId})`);
