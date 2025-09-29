@@ -124,10 +124,10 @@ body { font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, A
 .diagram-node.selected rect { stroke:var(--pri); fill:rgba(59,130,246,0.35); }
 .diagram-node.start.selected rect { stroke:var(--pri2); }
 .diagram-node text { font-size:12px; pointer-events:none; fill:#ecf2ff; font-weight:600; letter-spacing:.01em; }
-.diagram-link { fill:none; stroke:rgba(148,163,184,0.75); stroke-width:2.6; pointer-events:none; }
-.diagram-link.success { stroke:#22c55e; }
-.diagram-link.failure { stroke:#ef4444; }
-.diagram-arrow { fill:currentColor; }
+.diagram-link { fill:none; stroke:rgba(148,163,184,0.78); stroke-width:3; pointer-events:none; stroke-linecap:round; color:rgba(148,163,184,0.9); }
+.diagram-link.success { stroke:#22c55e; color:#22c55e; }
+.diagram-link.failure { stroke:#ef4444; color:#ef4444; }
+.diagram-arrow { fill:currentColor; stroke:#0f172a; stroke-width:0.8; }
 .graph-editor { align-items: stretch; }
 .step-controls { width:500px; flex:0 0 500px; display:flex; flex-direction:column; gap:10px; max-height:100%; overflow-y:auto; padding-right:6px; }
 .step-controls::-webkit-scrollbar { width:8px; }

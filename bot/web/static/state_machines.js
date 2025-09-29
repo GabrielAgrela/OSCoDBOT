@@ -1389,7 +1389,8 @@
       els.seqEditor.hidden = true;
       els.stepEditor.hidden = true;
       els.stepList.innerHTML = '';
-      els.diagram.innerHTML = '<defs><marker id="arrow" markerWidth="10" markerHeight="6" refX="10" refY="3" orient="auto" markerUnits="strokeWidth"><path d="M0,0 L10,3 L0,6 Z" class="diagram-arrow"></path></marker></defs>';
+      els.diagram.innerHTML = '';
+      ensureArrowDefs();
       state.diagramLayers = { links: null, nodes: null };
       state.dragging = null;
       state.panning = null;
@@ -1556,29 +1557,9 @@
     const machine = state.current;
     if (!machine || machine.type !== 'graph') return;
     applyViewBox();
-    const defs = els.diagram.querySelector('defs');
     els.diagram.innerHTML = '';
     state.diagramLayers = { links: null, nodes: null };
-    if (defs) {
-      els.diagram.appendChild(defs);
-    } else {
-      const d = document.createElementNS(svgNS, 'defs');
-      const marker = document.createElementNS(svgNS, 'marker');
-      marker.setAttribute('id', 'arrow');
-      marker.setAttribute('markerWidth', '10');
-      marker.setAttribute('markerHeight', '6');
-      marker.setAttribute('refX', '10');
-      marker.setAttribute('refY', '3');
-      marker.setAttribute('orient', 'auto');
-      marker.setAttribute('markerUnits', 'strokeWidth');
-      const path = document.createElementNS(svgNS, 'path');
-      path.setAttribute('d', 'M0,0 L10,3 L0,6 Z');
-      path.setAttribute('class', 'diagram-arrow');
-      marker.appendChild(path);
-      d.appendChild(marker);
-      els.diagram.appendChild(d);
-    }
-
+    ensureArrowDefs();
     createDiagramLayers();
     const nodeLayer = state.diagramLayers.nodes || els.diagram;
 
@@ -1666,13 +1647,55 @@
     const midY = startY + dy / 2 - 40;
     const d = `M ${startX} ${startY} Q ${midX} ${midY} ${endX} ${endY}`;
     group.setAttribute('d', d);
-    group.setAttribute('marker-end', 'url(#arrow)');
+    const markerId = kind === 'success' ? 'arrow-success' : kind === 'failure' ? 'arrow-failure' : 'arrow-neutral';
+    group.setAttribute('marker-end', `url(#${markerId})`);
     const layer = state.diagramLayers && state.diagramLayers.links;
     if (layer) {
       layer.appendChild(group);
     } else {
       els.diagram.appendChild(group);
     }
+  }
+
+  function ensureArrowDefs() {
+    let defs = els.diagram.querySelector('defs');
+    if (!defs) {
+      defs = document.createElementNS(svgNS, 'defs');
+      els.diagram.appendChild(defs);
+    }
+    const markers = [
+      { id: 'arrow-neutral', color: 'rgba(148, 163, 184, 0.9)' },
+      { id: 'arrow-success', color: '#22c55e' },
+      { id: 'arrow-failure', color: '#ef4444' }
+    ];
+    markers.forEach(cfg => {
+      let marker = defs.querySelector(`#${cfg.id}`);
+      if (!marker) {
+        marker = document.createElementNS(svgNS, 'marker');
+        marker.setAttribute('id', cfg.id);
+        defs.appendChild(marker);
+      }
+      marker.setAttribute('markerWidth', '14');
+      marker.setAttribute('markerHeight', '10');
+      marker.setAttribute('refX', '12');
+      marker.setAttribute('refY', '5');
+      marker.setAttribute('orient', 'auto');
+      marker.setAttribute('markerUnits', 'strokeWidth');
+      marker.setAttribute('viewBox', '0 0 14 10');
+      let path = marker.querySelector('path');
+      if (!path) {
+        path = document.createElementNS(svgNS, 'path');
+        path.setAttribute('class', 'diagram-arrow');
+        marker.appendChild(path);
+      } else {
+        path.setAttribute('class', 'diagram-arrow');
+      }
+      path.setAttribute('d', 'M1,1 L13,5 L1,9 Z');
+      path.setAttribute('fill', cfg.color);
+      path.setAttribute('stroke', '#0f172a');
+      path.setAttribute('stroke-width', '0.8');
+      path.setAttribute('vector-effect', 'non-scaling-stroke');
+    });
   }
 
   function createDiagramLayers() {
