@@ -112,10 +112,17 @@
                   <span>On Failure</span>
                   <select id="step-failure"></select>
                 </label>
-                <label>
-                  <span>Actions (JSON array)</span>
-                  <textarea id="step-actions" rows="6"></textarea>
-                </label>
+                <div class="actions-editor">
+                  <div class="actions-header">
+                    <h5>Actions</h5>
+                    <div class="actions-toolbar">
+                      <button id="action-add" type="button" class="btn">Add Action</button>
+                      <button id="action-toggle-json" type="button" class="btn secondary">Show JSON</button>
+                    </div>
+                  </div>
+                  <div id="action-list" class="action-list"></div>
+                  <textarea id="step-actions-json" rows="8" hidden></textarea>
+                </div>
                 <div class="step-buttons">
                   <button id="step-apply" type="button" class="btn">Apply</button>
                   <button id="step-delete" type="button" class="btn danger">Delete Step</button>
@@ -124,12 +131,19 @@
             </div>
           </div>
           <div id="sm-sequence-editor" class="sequence-editor" hidden>
-            <h3>Sequence Actions (JSON array)</h3>
-            <textarea id="sequence-actions" rows="10"></textarea>
+            <div class="actions-header">
+              <h3>Sequence Actions</h3>
+              <div class="actions-toolbar">
+                <button id="sequence-add" type="button" class="btn">Add Action</button>
+                <button id="sequence-toggle-json" type="button" class="btn secondary">Show JSON</button>
+              </div>
+            </div>
+            <div id="sequence-action-list" class="action-list"></div>
+            <textarea id="sequence-actions-json" rows="10" hidden></textarea>
           </div>
         </section>
       </div>
     </div>
-    <script src="/static/state_machines.js?v=1"></script>
+    <script src="/static/state_machines.js?v=2"></script>
   </body>
 </html>

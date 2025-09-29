@@ -5,8 +5,13 @@ import random
 
 from bot.config import AppConfig
 from bot.core.state_machine import Context, State, GraphState
+from bot.state_machines import loader as _sm_loader
 from bot.core import logs
-from .checkstuck import build_checkstuck_state
+
+
+def _build_checkstuck_state(cfg: AppConfig) -> tuple[State, Context]:
+    state, ctx, _ = _sm_loader.build_state_from_json(cfg, "checkstuck")
+    return state, ctx
 
 
 class AlternatingState(State):
@@ -162,8 +167,8 @@ def build_alternating_state(
     # Build underlying states and wrap each with its own check-stuck
     first_state, _ = first_builder(cfg)
     second_state, _ = second_builder(cfg)
-    chk1, _ = build_checkstuck_state(cfg)
-    chk2, _ = build_checkstuck_state(cfg)
+    chk1, _ = _build_checkstuck_state(cfg)
+    chk2, _ = _build_checkstuck_state(cfg)
     wrapped_first = WithCheckStuckState(first_state, chk1, label=first_label)
     wrapped_second = WithCheckStuckState(second_state, chk2, label=second_label)
     ctx = Context(
@@ -186,7 +191,7 @@ def build_round_robin_state(cfg: AppConfig, builders: Sequence[Builder] | Sequen
             builder = item  # type: ignore[assignment]
             label = None
         st, _ = builder(cfg)
-        chk, _ = build_checkstuck_state(cfg)
+        chk, _ = _build_checkstuck_state(cfg)
         states.append(WithCheckStuckState(st, chk, label=label))
     ctx = Context(
         window_title_substr=cfg.window_title_substr,

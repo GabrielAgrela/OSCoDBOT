@@ -1,15 +1,10 @@
-from .scouts import build_scouts_state
-from .farm_wood import build_farm_wood_state
-from .farm_ore import build_farm_ore_state
-from .alternate import build_alternating_state, build_round_robin_state, build_with_checkstuck_state
-from .farm_gold import build_farm_gold_state
-from .farm_mana import build_farm_mana_state
-from .farm_gem import build_farm_gem_state
-from .train import build_train_state
-from .alliance_help import build_alliance_help_state
-from .checkstuck import build_checkstuck_state
-from .farm_alliance_resource_center import build_farm_alliance_resource_center_state
+from __future__ import annotations
+
+from bot.config import AppConfig
+from bot.core.state_machine import Context, State
 from bot.state_machines import loader as _sm_loader
+
+from .alternate import build_alternating_state, build_round_robin_state, build_with_checkstuck_state
 
 __all__ = [
     "build_farm_alliance_resource_center_state",
@@ -26,6 +21,62 @@ __all__ = [
     "build_checkstuck_state",
     "build_farm_gem_state",
 ]
+
+
+def _build_json_state(cfg: AppConfig, key: str) -> tuple[State, Context]:
+    state, ctx, _ = _sm_loader.build_state_from_json(cfg, key)
+    return state, ctx
+
+
+def build_checkstuck_state(cfg: AppConfig) -> tuple[State, Context]:
+    return _build_json_state(cfg, "checkstuck")
+
+
+def build_scouts_state(cfg: AppConfig) -> tuple[State, Context]:
+    return _build_json_state(cfg, "scouts")
+
+
+def build_farm_wood_state(cfg: AppConfig) -> tuple[State, Context]:
+    return _build_json_state(cfg, "farm_wood")
+
+
+def build_farm_ore_state(cfg: AppConfig) -> tuple[State, Context]:
+    return _build_json_state(cfg, "farm_ore")
+
+
+def build_farm_gold_state(cfg: AppConfig) -> tuple[State, Context]:
+    return _build_json_state(cfg, "farm_gold")
+
+
+def build_farm_mana_state(cfg: AppConfig) -> tuple[State, Context]:
+    return _build_json_state(cfg, "farm_mana")
+
+
+def build_farm_gem_state(cfg: AppConfig) -> tuple[State, Context]:
+    return _build_json_state(cfg, "farm_gem")
+
+
+def build_train_state(cfg: AppConfig) -> tuple[State, Context]:
+    return _build_json_state(cfg, "train")
+
+
+def build_alliance_help_state(cfg: AppConfig) -> tuple[State, Context]:
+    return _build_json_state(cfg, "alliance_help")
+
+
+def build_farm_alliance_resource_center_state(cfg: AppConfig) -> tuple[State, Context]:
+    state, ctx, data = _sm_loader.build_state_from_json(cfg, "farm_alliance_resource_center")
+    if not getattr(state, "_one_shot", False):
+        try:
+            setattr(state, "_one_shot", True)
+        except Exception:
+            pass
+    if not getattr(state, "_label", None):
+        try:
+            setattr(state, "_label", data.get("label", "ARC"))
+        except Exception:
+            pass
+    return state, ctx
 
 # Central registry of available modes for the UI (key -> (label, builder))
 # Central registry order is UI order; make this one first

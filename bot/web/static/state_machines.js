@@ -22,7 +22,10 @@
     tags: document.getElementById('sm-tags'),
     graphEditor: document.getElementById('sm-graph-editor'),
     seqEditor: document.getElementById('sm-sequence-editor'),
-    sequenceActions: document.getElementById('sequence-actions'),
+    sequenceActionList: document.getElementById('sequence-action-list'),
+    sequenceAdd: document.getElementById('sequence-add'),
+    sequenceToggleJson: document.getElementById('sequence-toggle-json'),
+    sequenceActionsJson: document.getElementById('sequence-actions-json'),
     diagram: document.getElementById('diagram-canvas'),
     stepList: document.getElementById('step-list'),
     stepEditor: document.getElementById('step-editor'),
@@ -30,7 +33,10 @@
     stepName: document.getElementById('step-name'),
     stepSuccess: document.getElementById('step-success'),
     stepFailure: document.getElementById('step-failure'),
-    stepActions: document.getElementById('step-actions'),
+    actionList: document.getElementById('action-list'),
+    actionAdd: document.getElementById('action-add'),
+    actionToggleJson: document.getElementById('action-toggle-json'),
+    stepActionsJson: document.getElementById('step-actions-json'),
     stepApply: document.getElementById('step-apply'),
     stepDelete: document.getElementById('step-delete'),
     stepAdd: document.getElementById('step-add')
@@ -43,8 +49,11 @@
     isNew: false,
     selectedStep: null,
     dragging: null,
-    dirty: false
+    dirty: false,
+    stepDraftDirty: false
   };
+
+  const actionEditors = {};
 
   function fetchJSON(url, options = {}) {
     return fetch(url, Object.assign({
@@ -77,6 +86,53 @@
         }
       }, 4000);
     }
+  }
+
+  function layoutStorageKey(key) {
+    return `sm-layout:${key}`;
+  }
+
+  function saveLayoutToStorage(machine) {
+    if (!machine || !machine.key || !Array.isArray(machine.steps)) return;
+    const payload = {};
+    machine.steps.forEach(step => {
+      if (step && step.name && step.layout && typeof step.layout.x === 'number' && typeof step.layout.y === 'number') {
+        payload[step.name] = { x: step.layout.x, y: step.layout.y };
+      }
+    });
+    try {
+      localStorage.setItem(layoutStorageKey(machine.key), JSON.stringify(payload));
+    } catch (err) {
+      console.warn('Failed to persist layout', err);
+    }
+  }
+
+  function clearLayoutFromStorage(key) {
+    try {
+      localStorage.removeItem(layoutStorageKey(key));
+    } catch (err) {
+      console.warn('Failed to clear layout cache', err);
+    }
+  }
+
+  function applyStoredLayout(machine) {
+    if (!machine || !machine.key || !Array.isArray(machine.steps)) return;
+    let cached = null;
+    try {
+      const raw = localStorage.getItem(layoutStorageKey(machine.key));
+      if (raw) {
+        cached = JSON.parse(raw);
+      }
+    } catch (err) {
+      cached = null;
+    }
+    if (!cached) return;
+    machine.steps.forEach(step => {
+      const stored = cached[step.name];
+      if (stored && typeof stored.x === 'number' && typeof stored.y === 'number') {
+        step.layout = { x: stored.x, y: stored.y };
+      }
+    });
   }
 
   function loadList() {
@@ -151,6 +207,7 @@
         machine.steps = [];
       }
       ensureLayouts(machine);
+      applyStoredLayout(machine);
       if (!machine.start && machine.steps.length) {
         machine.start = machine.steps[0].name || '';
       }
@@ -163,14 +220,805 @@
   }
 
   function ensureLayouts(machine) {
-    const spacingX = 180;
-    const spacingY = 120;
-    machine.steps.forEach((step, idx) => {
-      if (!step.layout || typeof step.layout.x !== 'number' || typeof step.layout.y !== 'number') {
-        step.layout = { x: 80 + (idx % 4) * spacingX, y: 80 + Math.floor(idx / 4) * spacingY };
-      }
+    if (!machine || machine.type !== 'graph' || !Array.isArray(machine.steps)) return;
+    const invalid = machine.steps.some(step => !step.layout || typeof step.layout.x !== 'number' || typeof step.layout.y !== 'number');
+    if (invalid) {
+      const computed = computeAutoLayout(machine);
+      machine.steps.forEach(step => {
+        const coords = computed.get(step.name);
+        if (coords) {
+          step.layout = { x: coords.x, y: coords.y };
+        } else if (!step.layout) {
+          step.layout = { x: 100, y: 100 };
+        }
+      });
+    } else {
+      machine.steps.forEach(step => {
+        if (!step.layout) {
+          step.layout = { x: 100, y: 100 };
+        }
+      });
+    }
+    machine.steps.forEach(step => {
       if (!Array.isArray(step.actions)) {
         step.actions = [];
+      }
+    });
+  }
+
+  function computeAutoLayout(machine) {
+    const spacingX = 220;
+    const spacingY = 140;
+    const marginX = 80;
+    const marginY = 80;
+    const byName = new Map();
+    machine.steps.forEach(step => {
+      if (step && step.name) {
+        byName.set(step.name, step);
+      }
+    });
+    const levels = new Map();
+    const queue = [];
+    const visited = new Set();
+    const startName = machine.start && byName.has(machine.start) ? machine.start : (machine.steps[0] ? machine.steps[0].name : null);
+    if (startName) {
+      queue.push({ name: startName, depth: 0 });
+      visited.add(startName);
+    }
+    while (queue.length) {
+      const current = queue.shift();
+      const step = byName.get(current.name);
+      if (!step) continue;
+      if (!levels.has(current.depth)) {
+        levels.set(current.depth, []);
+      }
+      levels.get(current.depth).push(step.name);
+      [step.on_success, step.on_failure].forEach(target => {
+        if (target && byName.has(target) && !visited.has(target)) {
+          visited.add(target);
+          queue.push({ name: target, depth: current.depth + 1 });
+        }
+      });
+    }
+    let remaining = machine.steps.filter(step => !visited.has(step.name));
+    if (remaining.length) {
+      let depth = levels.size;
+      remaining.forEach(step => {
+        levels.set(depth, [step.name]);
+        depth += 1;
+      });
+    }
+    const layout = new Map();
+    Array.from(levels.keys()).sort((a, b) => a - b).forEach(level => {
+      const items = levels.get(level) || [];
+      items.forEach((name, idx) => {
+        const x = marginX + idx * spacingX;
+        const y = marginY + level * spacingY;
+        layout.set(name, { x, y });
+      });
+    });
+    return layout;
+  }
+
+  function deepClone(value) {
+    return JSON.parse(JSON.stringify(value));
+  }
+
+  const BUILTIN_ACTION_TYPES = [
+    'Screenshot',
+    'Wait',
+    'ClickPercent',
+    'DragPercent',
+    'SpiralCameraMoveStep',
+    'ResetGemSpiral',
+    'FindAndClick',
+    'EndCycle',
+    'CheckTemplate',
+    'CheckTemplatesCountAtLeast',
+    'CooldownGate',
+    'SetCooldown',
+    'SetCooldownRandom',
+    'Retry',
+    'ReadText'
+  ];
+
+  const ACTION_TEMPLATES = {
+    Screenshot: { name: '' },
+    Wait: { name: '', seconds: 1, randomize: false },
+    ClickPercent: { name: '', x_pct: 0.5, y_pct: 0.5 },
+    DragPercent: { name: '', x_pct: 0.5, y_pct: 0.5, to_x_pct: 0.6, to_y_pct: 0.6, duration_s: 0.5 },
+    SpiralCameraMoveStep: { name: '', magnitude_x_pct: 0.2, magnitude_y_pct: 0.15, pause_after_drag_s: 0.5 },
+    ResetGemSpiral: { name: '' },
+    FindAndClick: { name: '', templates: [], region_pct: [0, 0, 1, 1], threshold: 0.8 },
+    EndCycle: { name: '' },
+    CheckTemplate: { name: '', template: '', region_pct: [0, 0, 1, 1], threshold: 0.85 },
+    CheckTemplatesCountAtLeast: { name: '', templates: [], region_pct: [0, 0, 1, 1], threshold: 0.85, min_total: 1 },
+    CooldownGate: { name: '', key: '' },
+    SetCooldown: { name: '', key: '', seconds: 60 },
+    SetCooldownRandom: { name: '', key: '', min_seconds: 30, max_seconds: 120 },
+    Retry: { name: '', attempts: 3, actions: [] },
+    ReadText: { name: '', region_pct: [0, 0, 1, 1], mode: 'ocr' }
+  };
+
+  function createDefaultAction(type, previous) {
+    const template = ACTION_TEMPLATES[type];
+    const action = Object.assign({ type }, template ? deepClone(template) : {});
+    if (previous && typeof previous === 'object' && previous.name) {
+      action.name = previous.name;
+    }
+    if (type === 'Retry' && !Array.isArray(action.actions)) {
+      action.actions = [];
+    }
+    return action;
+  }
+
+  function collectActionTypes(actions, set = new Set()) {
+    if (!Array.isArray(actions)) return set;
+    actions.forEach(action => {
+      if (action && typeof action.type === 'string') {
+        set.add(action.type);
+      }
+      if (action && Array.isArray(action.actions)) {
+        collectActionTypes(action.actions, set);
+      }
+    });
+    return set;
+  }
+
+  function getTypeOptions(actions) {
+    const set = new Set(BUILTIN_ACTION_TYPES);
+    collectActionTypes(actions, set);
+    return Array.from(set).sort((a, b) => a.localeCompare(b));
+  }
+
+  function createActionEditor(config) {
+    const { listEl, addButton, toggleButton, jsonTextarea, onDirty, onError } = config;
+    let draft = [];
+    let showJson = false;
+
+    function markDirty() {
+      if (typeof onDirty === 'function') {
+        onDirty();
+      }
+    }
+
+    function setDraft(actions) {
+      draft = Array.isArray(actions) ? deepClone(actions) : [];
+      render();
+    }
+
+    function getDraft() {
+      if (showJson && jsonTextarea) {
+        try {
+          const parsed = JSON.parse(jsonTextarea.value || '[]');
+          if (!Array.isArray(parsed)) {
+            throw new Error('Actions must be an array');
+          }
+          draft = parsed;
+        } catch (err) {
+          throw err;
+        }
+      }
+      return deepClone(draft);
+    }
+
+    function getAtPath(path) {
+      return path.reduce((node, segment) => (node ? node[segment] : undefined), draft);
+    }
+
+    function getParent(path) {
+      if (!path.length) return null;
+      const parentPath = path.slice(0, -1);
+      const key = path[path.length - 1];
+      const container = parentPath.reduce((node, segment) => (node ? node[segment] : undefined), draft);
+      if (!container) return null;
+      return { container, key };
+    }
+
+    function replaceAction(path, newAction) {
+      const parent = getParent(path);
+      if (!parent) return;
+      parent.container[parent.key] = newAction;
+      markDirty();
+      render();
+    }
+
+    function removeAction(path) {
+      const parent = getParent(path);
+      if (!parent) return;
+      if (Array.isArray(parent.container)) {
+        parent.container.splice(parent.key, 1);
+      } else {
+        delete parent.container[parent.key];
+      }
+      markDirty();
+      render();
+    }
+
+    function moveAction(path, delta) {
+      const parent = getParent(path);
+      if (!parent || !Array.isArray(parent.container)) return;
+      const index = parent.key;
+      const target = index + delta;
+      if (target < 0 || target >= parent.container.length) return;
+      const tmp = parent.container[index];
+      parent.container[index] = parent.container[target];
+      parent.container[target] = tmp;
+      markDirty();
+      render();
+    }
+
+    function updateField(path, key, value) {
+      const action = getAtPath(path);
+      if (!action || typeof action !== 'object') return;
+      action[key] = value;
+      markDirty();
+    }
+
+    function removeField(path, key) {
+      const action = getAtPath(path);
+      if (!action || typeof action !== 'object') return;
+      delete action[key];
+      markDirty();
+      render();
+    }
+
+    function addField(path, key, value) {
+      const action = getAtPath(path);
+      if (!action || typeof action !== 'object' || !key) return;
+      if (key === 'type') return;
+      action[key] = value;
+      markDirty();
+      render();
+    }
+
+    function ensureNested(path) {
+      const action = getAtPath(path);
+      if (!action || typeof action !== 'object') return [];
+      if (!Array.isArray(action.actions)) {
+        action.actions = [];
+      }
+      return action.actions;
+    }
+
+    function addNestedAction(path) {
+      const actions = ensureNested(path);
+      actions.push(createDefaultAction('Wait'));
+      markDirty();
+      render();
+    }
+
+    function render() {
+      if (!listEl || !jsonTextarea || !toggleButton) return;
+      if (showJson) {
+        listEl.hidden = true;
+        jsonTextarea.hidden = false;
+        jsonTextarea.value = JSON.stringify(draft, null, 2);
+        toggleButton.textContent = 'Hide JSON';
+        return;
+      }
+      listEl.hidden = false;
+      jsonTextarea.hidden = true;
+      toggleButton.textContent = 'Show JSON';
+      renderActionList(draft, listEl, [], {
+        editor,
+        typeOptions: getTypeOptions(draft),
+        onError
+      });
+    }
+
+    function toggleJson() {
+      if (!showJson) {
+        showJson = true;
+        render();
+        return;
+      }
+      if (!jsonTextarea) return;
+      try {
+        const parsed = JSON.parse(jsonTextarea.value || '[]');
+        if (!Array.isArray(parsed)) {
+          throw new Error('Actions must be an array');
+        }
+        draft = parsed;
+        markDirty();
+        showJson = false;
+        render();
+      } catch (err) {
+        if (onError) onError(`Invalid JSON: ${err.message}`);
+      }
+    }
+
+    if (addButton) {
+      addButton.addEventListener('click', () => {
+        draft.push(createDefaultAction('Wait'));
+        markDirty();
+        render();
+      });
+    }
+
+    if (toggleButton) {
+      toggleButton.addEventListener('click', toggleJson);
+    }
+
+    const editor = {
+      setDraft,
+      getDraft,
+      render,
+      changeType(path, type) {
+        const action = getAtPath(path);
+        const next = createDefaultAction(type, action);
+        replaceAction(path, next);
+      },
+      deleteAction: removeAction,
+      moveAction,
+      updateField,
+      removeField,
+      addField,
+      addNestedAction,
+      isJsonMode() {
+        return showJson;
+      },
+      markDirty
+    };
+
+    return editor;
+  }
+
+  function renderActionList(actions, container, path, ctx) {
+    container.innerHTML = '';
+    if (!Array.isArray(actions) || actions.length === 0) {
+      const empty = document.createElement('div');
+      empty.className = 'action-empty';
+      empty.textContent = 'No actions yet.';
+      container.appendChild(empty);
+      return;
+    }
+    const typeOptions = Array.isArray(ctx.typeOptions) ? ctx.typeOptions : getTypeOptions(ctx.editor ? ctx.editor.getDraft ? ctx.editor.getDraft() : actions : actions);
+    actions.forEach((action, index) => {
+      const card = renderActionCard(action || {}, path.concat(index), Object.assign({}, ctx, { parentLength: actions.length }), index, typeOptions);
+      container.appendChild(card);
+    });
+  }
+
+  function renderActionCard(action, path, ctx, index, typeOptions) {
+    const card = document.createElement('div');
+    card.className = 'action-card';
+
+    const header = document.createElement('div');
+    header.className = 'action-card-header';
+
+    const title = document.createElement('div');
+    title.className = 'action-card-title';
+    const pill = document.createElement('span');
+    pill.className = 'action-pill';
+    pill.textContent = action.type || 'Action';
+    title.appendChild(pill);
+    const subtitle = document.createElement('span');
+    subtitle.className = 'action-card-subtitle';
+    subtitle.textContent = `#${index + 1}`;
+    title.appendChild(subtitle);
+    header.appendChild(title);
+
+    const controls = document.createElement('div');
+    controls.className = 'action-card-controls';
+
+    const typeSelect = document.createElement('select');
+    typeSelect.className = 'action-type-select';
+    const opts = new Set(typeOptions);
+    if (action.type && !opts.has(action.type)) {
+      opts.add(action.type);
+    }
+    Array.from(opts).sort((a, b) => a.localeCompare(b)).forEach(name => {
+      const opt = document.createElement('option');
+      opt.value = name;
+      opt.textContent = name;
+      if (name === action.type) {
+        opt.selected = true;
+      }
+      typeSelect.appendChild(opt);
+    });
+    typeSelect.addEventListener('change', evt => {
+      ctx.editor.changeType(path, evt.target.value);
+    });
+    controls.appendChild(typeSelect);
+
+    const moveUp = createIconButton('▲', 'Move up', index === 0, () => ctx.editor.moveAction(path, -1));
+    const moveDown = createIconButton('▼', 'Move down', index >= (ctx.parentLength || 1) - 1, () => ctx.editor.moveAction(path, 1));
+    controls.appendChild(moveUp);
+    controls.appendChild(moveDown);
+    const deleteBtn = createIconButton('✕', 'Delete action', false, () => ctx.editor.deleteAction(path));
+    deleteBtn.classList.add('danger');
+    controls.appendChild(deleteBtn);
+
+    header.appendChild(controls);
+    card.appendChild(header);
+
+    const body = document.createElement('div');
+    body.className = 'action-card-body';
+    const keys = Object.keys(action || {}).filter(key => key !== 'type' && key !== 'actions');
+    keys.forEach(key => {
+      const field = renderActionField(action, key, path, ctx);
+      body.appendChild(field);
+    });
+    card.appendChild(body);
+
+    if (Array.isArray(action.actions)) {
+      const nestedWrapper = document.createElement('div');
+      nestedWrapper.className = 'nested-actions';
+      const nestedToolbar = document.createElement('div');
+      nestedToolbar.className = 'actions-toolbar';
+      const nestedLabel = document.createElement('span');
+      nestedLabel.className = 'action-pill';
+      nestedLabel.textContent = 'Nested Actions';
+      nestedToolbar.appendChild(nestedLabel);
+      const nestedAdd = document.createElement('button');
+      nestedAdd.type = 'button';
+      nestedAdd.className = 'btn secondary';
+      nestedAdd.textContent = 'Add Action';
+      nestedAdd.addEventListener('click', () => ctx.editor.addNestedAction(path.concat('actions')));
+      nestedToolbar.appendChild(nestedAdd);
+      nestedWrapper.appendChild(nestedToolbar);
+      const nestedList = document.createElement('div');
+      nestedList.className = 'action-list';
+      nestedWrapper.appendChild(nestedList);
+      renderActionList(action.actions, nestedList, path.concat('actions'), ctx);
+      card.appendChild(nestedWrapper);
+    }
+
+    const footer = document.createElement('div');
+    footer.className = 'action-card-footer';
+    const addFieldBtn = document.createElement('button');
+    addFieldBtn.type = 'button';
+    addFieldBtn.className = 'btn secondary';
+    addFieldBtn.textContent = 'Add Field';
+    addFieldBtn.addEventListener('click', () => openAddFieldForm(footer, path, ctx));
+    footer.appendChild(addFieldBtn);
+    card.appendChild(footer);
+
+    return card;
+  }
+
+  function createIconButton(symbol, title, disabled, handler) {
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'icon-button';
+    btn.textContent = symbol;
+    btn.title = title;
+    if (disabled) {
+      btn.disabled = true;
+      btn.classList.add('disabled');
+    } else {
+      btn.addEventListener('click', handler);
+    }
+    return btn;
+  }
+
+  function determineValueKind(value) {
+    if (Array.isArray(value)) {
+      if (value.every(item => typeof item === 'string')) return 'string_list';
+      if (value.every(item => typeof item === 'number')) return 'number_list';
+      if (value.every(item => item && typeof item === 'object' && typeof item.type === 'string')) return 'actions';
+      return 'json';
+    }
+    if (value && typeof value === 'object') {
+      if (Object.prototype.hasOwnProperty.call(value, '$config')) return 'config';
+      return 'json';
+    }
+    if (typeof value === 'number') return 'number';
+    if (typeof value === 'boolean') return 'boolean';
+    return 'string';
+  }
+
+  function renderActionField(action, key, path, ctx) {
+    const field = document.createElement('div');
+    field.className = 'action-field';
+    const label = document.createElement('div');
+    label.className = 'action-field-label';
+    label.textContent = key;
+    const removeBtn = createIconButton('✕', 'Remove field', false, () => ctx.editor.removeField(path, key));
+    removeBtn.classList.add('danger');
+    label.appendChild(removeBtn);
+    field.appendChild(label);
+
+    const kind = determineValueKind(action[key]);
+    if (kind === 'actions') {
+      const note = document.createElement('div');
+      note.className = 'action-field-note';
+      note.textContent = 'Use the nested editor below to manage actions.';
+      field.appendChild(note);
+      return field;
+    }
+
+    const input = createFieldInput(kind, action[key], value => ctx.editor.updateField(path, key, value), ctx.onError);
+    field.appendChild(input);
+    return field;
+  }
+
+  function createFieldInput(kind, value, onChange, onError) {
+    const wrapper = document.createElement('div');
+    wrapper.className = 'action-field-input';
+
+    function notifyError(msg) {
+      if (typeof onError === 'function') onError(msg);
+    }
+
+    if (kind === 'string') {
+      const input = document.createElement('input');
+      input.type = 'text';
+      input.value = value != null ? value : '';
+      input.addEventListener('input', () => onChange(input.value));
+      wrapper.appendChild(input);
+      return wrapper;
+    }
+    if (kind === 'number') {
+      const input = document.createElement('input');
+      input.type = 'number';
+      input.step = 'any';
+      input.value = value != null ? value : '';
+      input.addEventListener('change', () => {
+        const parsed = parseFloat(input.value);
+        if (Number.isNaN(parsed)) {
+          notifyError('Invalid number');
+        } else {
+          onChange(parsed);
+        }
+      });
+      wrapper.appendChild(input);
+      return wrapper;
+    }
+    if (kind === 'boolean') {
+      const input = document.createElement('input');
+      input.type = 'checkbox';
+      input.checked = Boolean(value);
+      input.addEventListener('change', () => onChange(Boolean(input.checked)));
+      wrapper.appendChild(input);
+      return wrapper;
+    }
+    if (kind === 'string_list' || kind === 'number_list') {
+      const textarea = document.createElement('textarea');
+      const items = Array.isArray(value) ? value : [];
+      textarea.value = items.map(item => String(item)).join('\n');
+      textarea.rows = 4;
+      textarea.addEventListener('change', () => {
+        const lines = textarea.value.split(/\r?\n/).map(line => line.trim()).filter(Boolean);
+        if (kind === 'number_list') {
+          const parsed = lines.map(line => Number(line)).filter(num => !Number.isNaN(num));
+          onChange(parsed);
+        } else {
+          onChange(lines);
+        }
+      });
+      wrapper.appendChild(textarea);
+      return wrapper;
+    }
+    if (kind === 'config') {
+      const attrInput = document.createElement('input');
+      attrInput.type = 'text';
+      attrInput.placeholder = 'config attribute';
+      attrInput.value = value && value.$config ? value.$config : '';
+      const defaultInput = document.createElement('textarea');
+      defaultInput.rows = 2;
+      defaultInput.placeholder = 'default (optional, JSON)';
+      defaultInput.value = value && Object.prototype.hasOwnProperty.call(value, 'default') ? JSON.stringify(value.default) : '';
+      attrInput.addEventListener('change', () => {
+        const attr = attrInput.value.trim();
+        if (!attr) {
+          notifyError('Config attribute cannot be empty');
+          return;
+        }
+        const updated = { $config: attr };
+        const defText = defaultInput.value.trim();
+        if (defText) {
+          try {
+            updated.default = JSON.parse(defText);
+          } catch (err) {
+            updated.default = defText;
+          }
+        }
+        onChange(updated);
+      });
+      defaultInput.addEventListener('change', () => attrInput.dispatchEvent(new Event('change')));
+      wrapper.appendChild(attrInput);
+      wrapper.appendChild(defaultInput);
+      return wrapper;
+    }
+    const textarea = document.createElement('textarea');
+    textarea.rows = 4;
+    textarea.value = value != null ? JSON.stringify(value, null, 2) : '';
+    textarea.addEventListener('change', () => {
+      const raw = textarea.value.trim();
+      if (!raw) {
+        onChange(null);
+        return;
+      }
+      try {
+        const parsed = JSON.parse(raw);
+        onChange(parsed);
+      } catch (err) {
+        notifyError(`Invalid JSON: ${err.message}`);
+      }
+    });
+    wrapper.appendChild(textarea);
+    return wrapper;
+  }
+
+  function openAddFieldForm(container, path, ctx) {
+    if (container.querySelector('.custom-field')) return;
+    const form = document.createElement('div');
+    form.className = 'action-field custom-field';
+    const label = document.createElement('div');
+    label.className = 'action-field-label';
+    label.textContent = 'New Field';
+    form.appendChild(label);
+
+    const row = document.createElement('div');
+    row.className = 'action-field-input';
+
+    const nameInput = document.createElement('input');
+    nameInput.type = 'text';
+    nameInput.placeholder = 'name';
+    row.appendChild(nameInput);
+
+    const typeSelect = document.createElement('select');
+    const fieldTypes = [
+      { value: 'string', label: 'String' },
+      { value: 'number', label: 'Number' },
+      { value: 'boolean', label: 'Boolean' },
+      { value: 'string_list', label: 'String List' },
+      { value: 'number_list', label: 'Number List' },
+      { value: 'json', label: 'JSON' },
+      { value: 'config', label: 'Config Reference' }
+    ];
+    fieldTypes.forEach(item => {
+      const opt = document.createElement('option');
+      opt.value = item.value;
+      opt.textContent = item.label;
+      typeSelect.appendChild(opt);
+    });
+    row.appendChild(typeSelect);
+
+    const valueWrapper = document.createElement('div');
+    valueWrapper.className = 'custom-field-value';
+    row.appendChild(valueWrapper);
+
+    form.appendChild(row);
+
+    const actions = document.createElement('div');
+    actions.className = 'action-card-footer';
+    const saveBtn = document.createElement('button');
+    saveBtn.type = 'button';
+    saveBtn.className = 'btn primary';
+    saveBtn.textContent = 'Save';
+    const cancelBtn = document.createElement('button');
+    cancelBtn.type = 'button';
+    cancelBtn.className = 'btn';
+    cancelBtn.textContent = 'Cancel';
+    actions.appendChild(saveBtn);
+    actions.appendChild(cancelBtn);
+    form.appendChild(actions);
+    container.appendChild(form);
+
+    let currentInput = null;
+
+    function renderValueEditor(kind) {
+      valueWrapper.innerHTML = '';
+      if (currentInput && currentInput.destroy) {
+        currentInput.destroy();
+      }
+      if (kind === 'boolean') {
+        const select = document.createElement('select');
+        ['true', 'false'].forEach(val => {
+          const opt = document.createElement('option');
+          opt.value = val;
+          opt.textContent = val;
+          select.appendChild(opt);
+        });
+        valueWrapper.appendChild(select);
+        currentInput = {
+          getValue() { return select.value === 'true'; }
+        };
+        return;
+      }
+      if (kind === 'string') {
+        const input = document.createElement('input');
+        input.type = 'text';
+        valueWrapper.appendChild(input);
+        currentInput = {
+          getValue() { return input.value; }
+        };
+        return;
+      }
+      if (kind === 'number') {
+        const input = document.createElement('input');
+        input.type = 'number';
+        input.step = 'any';
+        valueWrapper.appendChild(input);
+        currentInput = {
+          getValue() {
+            const parsed = parseFloat(input.value);
+            if (Number.isNaN(parsed)) throw new Error('Enter a valid number');
+            return parsed;
+          }
+        };
+        return;
+      }
+      if (kind === 'string_list' || kind === 'number_list') {
+        const textarea = document.createElement('textarea');
+        textarea.rows = 3;
+        textarea.placeholder = 'one per line';
+        valueWrapper.appendChild(textarea);
+        currentInput = {
+          getValue() {
+            const lines = textarea.value.split(/\r?\n/).map(line => line.trim()).filter(Boolean);
+            if (kind === 'number_list') {
+              const parsed = lines.map(line => Number(line)).filter(num => !Number.isNaN(num));
+              return parsed;
+            }
+            return lines;
+          }
+        };
+        return;
+      }
+      if (kind === 'config') {
+        const attrInput = document.createElement('input');
+        attrInput.type = 'text';
+        attrInput.placeholder = 'config attribute';
+        const defaultInput = document.createElement('textarea');
+        defaultInput.rows = 2;
+        defaultInput.placeholder = 'default (optional, JSON)';
+        valueWrapper.appendChild(attrInput);
+        valueWrapper.appendChild(defaultInput);
+        currentInput = {
+          getValue() {
+            const attr = attrInput.value.trim();
+            if (!attr) throw new Error('Config attribute is required');
+            const result = { $config: attr };
+            const def = defaultInput.value.trim();
+            if (def) {
+              try {
+                result.default = JSON.parse(def);
+              } catch (err) {
+                result.default = def;
+              }
+            }
+            return result;
+          }
+        };
+        return;
+      }
+      const textarea = document.createElement('textarea');
+      textarea.rows = 3;
+      textarea.placeholder = 'JSON value';
+      valueWrapper.appendChild(textarea);
+      currentInput = {
+        getValue() {
+          const raw = textarea.value.trim();
+          if (!raw) return null;
+          return JSON.parse(raw);
+        }
+      };
+    }
+
+    renderValueEditor(typeSelect.value);
+    typeSelect.addEventListener('change', () => renderValueEditor(typeSelect.value));
+
+    cancelBtn.addEventListener('click', () => {
+      form.remove();
+    });
+
+    saveBtn.addEventListener('click', () => {
+      const name = nameInput.value.trim();
+      if (!name) {
+        if (ctx.onError) ctx.onError('Field name cannot be empty');
+        return;
+      }
+      if (!currentInput || typeof currentInput.getValue !== 'function') return;
+      try {
+        const value = currentInput.getValue();
+        ctx.editor.addField(path, name, value);
+        form.remove();
+      } catch (err) {
+        if (ctx.onError) ctx.onError(err.message);
       }
     });
   }
@@ -228,6 +1076,12 @@
       els.stepEditor.hidden = true;
       els.stepList.innerHTML = '';
       els.diagram.innerHTML = '<defs><marker id="arrow" markerWidth="10" markerHeight="6" refX="10" refY="3" orient="auto" markerUnits="strokeWidth"><path d="M0,0 L10,3 L0,6 Z" class="diagram-arrow"></path></marker></defs>';
+      if (actionEditors.sequence && actionEditors.sequence.setDraft) {
+        actionEditors.sequence.setDraft([]);
+      }
+      if (actionEditors.step && actionEditors.step.setDraft) {
+        actionEditors.step.setDraft([]);
+      }
       return;
     }
     els.title.textContent = machine.label || machine.key || 'State Machine';
@@ -259,7 +1113,13 @@
       toggleStartVisibility(false);
       els.graphEditor.hidden = true;
       els.seqEditor.hidden = false;
-      els.sequenceActions.value = JSON.stringify(machine.actions || [], null, 2);
+      if (actionEditors.step && actionEditors.step.setDraft) {
+        actionEditors.step.setDraft([]);
+      }
+      state.stepDraftDirty = false;
+      if (actionEditors.sequence && actionEditors.sequence.setDraft) {
+        actionEditors.sequence.setDraft(machine.actions || []);
+      }
     }
   }
 
@@ -288,15 +1148,32 @@
     const machine = state.current;
     els.stepList.innerHTML = '';
     if (!machine || machine.type !== 'graph') return;
-    machine.steps.forEach(step => {
+    const steps = machine.steps.slice().sort((a, b) => {
+      const ay = a.layout ? a.layout.y : 0;
+      const by = b.layout ? b.layout.y : 0;
+      if (ay !== by) return ay - by;
+      const ax = a.layout ? a.layout.x : 0;
+      const bx = b.layout ? b.layout.x : 0;
+      return ax - bx;
+    });
+    steps.forEach(step => {
       const li = document.createElement('li');
       li.className = 'step-item';
       li.dataset.name = step.name;
       li.textContent = step.name;
+      if (machine.start === step.name) {
+        li.classList.add('start');
+      }
       if (state.selectedStep && state.selectedStep.name === step.name) {
         li.classList.add('selected');
       }
       li.addEventListener('click', () => {
+        if (state.stepDraftDirty) {
+          const applied = applyStepChanges(true);
+          if (!applied) {
+            return;
+          }
+        }
         state.selectedStep = step;
         updateStepForm();
         renderStepList();
@@ -309,6 +1186,9 @@
     const machine = state.current;
     if (!machine || machine.type !== 'graph' || !state.selectedStep) {
       els.stepEditor.hidden = true;
+      if (actionEditors.step && actionEditors.step.setDraft) {
+        actionEditors.step.setDraft([]);
+      }
       return;
     }
     const step = state.selectedStep;
@@ -317,7 +1197,10 @@
     els.stepName.value = step.name;
     populateTransitionSelect(els.stepSuccess, step.on_success);
     populateTransitionSelect(els.stepFailure, step.on_failure);
-    els.stepActions.value = JSON.stringify(step.actions || [], null, 2);
+    if (actionEditors.step && actionEditors.step.setDraft) {
+      actionEditors.step.setDraft(step.actions || []);
+    }
+    state.stepDraftDirty = false;
   }
 
   function populateTransitionSelect(select, value) {
@@ -373,6 +1256,9 @@
       group.dataset.name = step.name;
       if (state.selectedStep && state.selectedStep.name === step.name) {
         group.classList.add('selected');
+      }
+      if (machine.start === step.name) {
+        group.classList.add('start');
       }
       const rect = document.createElementNS(svgNS, 'rect');
       rect.setAttribute('x', step.layout.x);
@@ -478,28 +1364,34 @@
       if (state.dragging && state.dragging.step === step) {
         state.dragging = null;
         group.releasePointerCapture(evt.pointerId);
+        if (state.current && state.current.type === 'graph') {
+          saveLayoutToStorage(state.current);
+        }
       }
     });
     group.addEventListener('pointerleave', evt => {
       if (state.dragging && state.dragging.step === step && evt.buttons === 0) {
         state.dragging = null;
+        if (state.current && state.current.type === 'graph') {
+          saveLayoutToStorage(state.current);
+        }
       }
     });
   }
 
-  function applyStepChanges() {
-    if (!state.current || state.current.type !== 'graph' || !state.selectedStep) return;
+  function applyStepChanges(silent = false) {
+    if (!state.current || state.current.type !== 'graph' || !state.selectedStep) return false;
     const step = state.selectedStep;
     const newName = els.stepName.value.trim();
     if (!newName) {
-      showStatus('Step name cannot be empty.', 'err');
-      return;
+      if (!silent) showStatus('Step name cannot be empty.', 'err');
+      return false;
     }
     const machine = state.current;
     if (newName !== step.name) {
       if (machine.steps.some(s => s !== step && s.name === newName)) {
-        showStatus('Another step already has that name.', 'err');
-        return;
+        if (!silent) showStatus('Another step already has that name.', 'err');
+        return false;
       }
       // Update references
       machine.steps.forEach(s => {
@@ -513,20 +1405,23 @@
     }
     step.on_success = els.stepSuccess.value || null;
     step.on_failure = els.stepFailure.value || null;
-    try {
-      const parsed = JSON.parse(els.stepActions.value || '[]');
-      if (!Array.isArray(parsed)) throw new Error('Actions must be an array');
-      step.actions = parsed;
-    } catch (err) {
-      showStatus(`Invalid actions JSON: ${err.message}`, 'err');
-      return;
+    if (actionEditors.step && typeof actionEditors.step.getDraft === 'function') {
+      try {
+        const actions = actionEditors.step.getDraft();
+        step.actions = actions;
+      } catch (err) {
+        if (!silent) showStatus(`Invalid actions: ${err.message}`, 'err');
+        return false;
+      }
     }
     state.dirty = true;
+    state.stepDraftDirty = false;
     renderStepList();
     renderDiagram();
     populateStartOptions();
     updateStepForm();
-    showStatus('Step updated.', 'info');
+    if (!silent) showStatus('Step updated.', 'info');
+    return true;
   }
 
   function addStep() {
@@ -549,6 +1444,7 @@
     state.selectedStep = step;
     ensureLayouts(state.current);
     state.dirty = true;
+    saveLayoutToStorage(state.current);
     renderEditor();
     showStatus('Step added.', 'info');
   }
@@ -570,6 +1466,7 @@
     }
     state.selectedStep = state.current.steps[0] || null;
     state.dirty = true;
+    saveLayoutToStorage(state.current);
     renderEditor();
     showStatus('Step deleted.', 'info');
   }
@@ -588,13 +1485,13 @@
     if (state.current.type === 'graph') {
       state.current.start = els.start.value || (state.current.steps[0] ? state.current.steps[0].name : '');
     } else {
-      try {
-        const parsed = JSON.parse(els.sequenceActions.value || '[]');
-        if (Array.isArray(parsed)) {
-          state.current.actions = parsed;
+      if (actionEditors.sequence && typeof actionEditors.sequence.getDraft === 'function') {
+        try {
+          const actions = actionEditors.sequence.getDraft();
+          state.current.actions = actions;
+        } catch (err) {
+          showStatus(`Invalid sequence actions: ${err.message}`, 'err');
         }
-      } catch (err) {
-        showStatus(`Invalid sequence JSON: ${err.message}`, 'err');
       }
     }
   }
@@ -607,6 +1504,7 @@
       els.key.focus();
       return;
     }
+    const previousKey = state.current.key || '';
     updateMetaFromForm();
     state.current.key = key;
     const payload = JSON.parse(JSON.stringify(state.current));
@@ -621,6 +1519,10 @@
         state.isNew = false;
         state.dirty = false;
         state.currentKey = key;
+        saveLayoutToStorage(state.current);
+        if (previousKey && previousKey !== key) {
+          clearLayoutFromStorage(previousKey);
+        }
         loadList();
       })
       .catch(err => showStatus(`Save failed: ${err.message}`, 'err'));
@@ -636,6 +1538,7 @@
         state.current = null;
         state.currentKey = null;
         state.selectedStep = null;
+        clearLayoutFromStorage(key);
         renderEditor();
         loadList();
       })
@@ -671,6 +1574,33 @@
     renderEditor();
   }
 
+  function initActionEditors() {
+    if (els.actionList && els.stepActionsJson) {
+      actionEditors.step = createActionEditor({
+        listEl: els.actionList,
+        addButton: els.actionAdd,
+        toggleButton: els.actionToggleJson,
+        jsonTextarea: els.stepActionsJson,
+        onDirty: () => {
+          state.stepDraftDirty = true;
+        },
+        onError: msg => showStatus(msg, 'err')
+      });
+    }
+    if (els.sequenceActionList && els.sequenceActionsJson) {
+      actionEditors.sequence = createActionEditor({
+        listEl: els.sequenceActionList,
+        addButton: els.sequenceAdd,
+        toggleButton: els.sequenceToggleJson,
+        jsonTextarea: els.sequenceActionsJson,
+        onDirty: () => {
+          state.dirty = true;
+        },
+        onError: msg => showStatus(msg, 'err')
+      });
+    }
+  }
+
   function initEvents() {
     els.refresh.addEventListener('click', () => {
       loadList();
@@ -683,7 +1613,6 @@
     els.form.addEventListener('change', handleMetaChange);
     els.type.addEventListener('change', handleTypeChange);
     els.start.addEventListener('change', handleMetaChange);
-    els.sequenceActions.addEventListener('change', handleMetaChange);
     els.stepApply.addEventListener('click', applyStepChanges);
     els.stepDelete.addEventListener('click', deleteStep);
     els.stepAdd.addEventListener('click', addStep);
@@ -691,6 +1620,7 @@
 
   function init() {
     if (!els.list) return;
+    initActionEditors();
     initEvents();
     loadList();
   }
