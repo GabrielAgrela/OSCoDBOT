@@ -31,7 +31,20 @@
         </div>
       </section>
 
-      <section class="panel">
+      <section id="machine-viewer" class="panel machine-viewer" aria-label="State machine preview">
+        <div class="machine-viewer-header">
+          <div class="machine-viewer-title" id="machine-viewer-title">State Machine Preview</div>
+          <div class="machine-viewer-status" id="machine-viewer-status">Select a mode to preview its flow.</div>
+        </div>
+        <div class="machine-viewer-body">
+          <div class="diagram-wrapper">
+            <svg id="machine-viewer-canvas" viewBox="0 0 960 640" role="img" aria-label="Current state machine diagram"></svg>
+            <div class="machine-viewer-empty" id="machine-viewer-empty">Select a mode to preview its flow.</div>
+          </div>
+        </div>
+      </section>
+
+      <section id="control-panel" class="panel">
         <div class="controls">
           <button id="start" class="btn primary" disabled>
             <span class="spinner" aria-hidden="true"></span>
@@ -68,5 +81,6 @@
 
     </div>
     <script src="/static/app.js?v=6"></script>
+    <script src="/static/state_machine_viewer.js?v=1"></script>
   </body>
   </html>

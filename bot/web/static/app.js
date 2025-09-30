@@ -79,12 +79,22 @@ function clearSessionBaseline() {
   try { localStorage.removeItem(LS_SESSION_KEY); } catch (e) { /* ignore */ }
 }
 
+function broadcastSelection(selection) {
+  try {
+    const detail = { selection: Array.isArray(selection) ? selection.slice() : [] };
+    document.dispatchEvent(new CustomEvent('bot-selection', { detail }));
+  } catch (e) {
+    // ignore broadcast failures
+  }
+}
+
 function applySavedSelection() {
   const saved = new Set(loadSelectionLS());
   document.querySelectorAll('.mode-check').forEach(el => {
     el.checked = saved.has(el.value);
   });
   refreshModeCardStates();
+  broadcastSelection(getSelection());
 }
 
 function applySavedCounters() {
@@ -160,14 +170,21 @@ function updateControls() {
 
 function onSelectionChange() {
   // Save selections whenever user toggles a mode
-  saveSelectionLS(getSelection());
+  const selection = getSelection();
+  saveSelectionLS(selection);
   updateControls();
+  broadcastSelection(selection);
 }
 
 async function status() {
   try {
     const res = await fetch('/api/status');
     const data = await res.json();
+    try {
+      document.dispatchEvent(new CustomEvent('bot-status', { detail: data }));
+    } catch (err) {
+      // ignore broadcast issues
+    }
     const el = document.getElementById('status');
     const cdEl = document.getElementById('cooldown');
     const startBtn = document.getElementById('start');
@@ -339,6 +356,11 @@ async function metrics() {
     const res = await fetch('/api/metrics');
     if (!res.ok) return;
     const data = await res.json();
+    try {
+      document.dispatchEvent(new CustomEvent('bot-metrics', { detail: data }));
+    } catch (err) {
+      // ignore broadcast issues
+    }
     const el = document.getElementById('window-dims');
     const ctr = document.getElementById('counters');
     if (!el) return;

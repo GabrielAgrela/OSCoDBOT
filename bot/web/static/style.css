@@ -23,8 +23,7 @@ body { font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, A
 
 .section-title { font-size: 11px; letter-spacing:.08em; text-transform: uppercase; opacity:.7; margin: 10px 2px 6px; }
 .panel { border:1px solid var(--bord); background: var(--card); border-radius: 8px; padding: 8px; box-shadow: 0 3px 12px rgba(0,0,0,.18); }
-/* Right-side panel: fixed to viewport; log scrolls inside */
-.container > .panel:not(#shot-panel) {
+#control-panel {
   position: fixed;
   right: 8px;
   top: 8px;
@@ -121,6 +120,7 @@ body { font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, A
 .diagram-node rect { fill:#173352; stroke:rgba(148,163,184,0.75); stroke-width:2.4; rx:10; ry:10; filter:drop-shadow(0 8px 18px rgba(15,23,42,0.45)); }
 .diagram-node.dragging rect { cursor: grabbing; }
 .diagram-node.start rect { stroke:rgba(59,130,246,0.85); fill:rgba(37,99,235,0.28); }
+.diagram-node.active rect { stroke:#facc15; fill:rgba(250,204,21,0.35); box-shadow:0 0 0 2px rgba(250,204,21,0.25); }
 .diagram-node.selected rect { stroke:var(--pri); fill:rgba(59,130,246,0.35); }
 .diagram-node.start.selected rect { stroke:var(--pri2); }
 .diagram-node text { font-size:12px; pointer-events:none; fill:#ecf2ff; font-weight:600; letter-spacing:.01em; }
@@ -191,13 +191,25 @@ body { font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, A
 .state-machines .status.ok { color:#34d399; }
 .state-machines .status.warn { color:#facc15; }
 
+.machine-viewer { margin-top: 12px; padding: 12px; background: rgba(15,20,26,0.95); border:1px solid var(--bord); border-radius: 10px; box-shadow:0 6px 18px rgba(0,0,0,0.25); display:flex; flex-direction:column; gap:12px; }
+.machine-viewer-header { display:flex; flex-direction:column; gap:4px; }
+.machine-viewer-title { font-size:14px; font-weight:600; letter-spacing:.04em; text-transform:uppercase; opacity:.85; }
+.machine-viewer-status { font-size:11px; opacity:.8; }
+.machine-viewer-body { min-height:260px; display:flex; }
+.machine-viewer .diagram-wrapper { width:100%; cursor: default; }
+.machine-viewer .diagram-wrapper::before { opacity: 0.65; }
+.machine-viewer .diagram-wrapper > * { position:relative; z-index:1; }
+.machine-viewer-empty { position:absolute; inset:0; display:flex; align-items:center; justify-content:center; text-align:center; font-size:12px; padding:16px; color:#cbd5e1; opacity:0.85; backdrop-filter:blur(2px); background:rgba(15,23,42,0.35); z-index:2; pointer-events:none; }
+.machine-viewer.has-graph .machine-viewer-empty { display:none; }
+.machine-viewer svg { width:100%; height:100%; }
+
 
 
 @media (max-width: 900px) {
   :root { --side: 0px; }
   body { overflow-y: auto; }
   .container { max-width: 100%; padding: 12px; padding-right: 12px; }
-  .container > .panel:not(#shot-panel) {
+  #control-panel {
     position: static;
     right: auto;
     top: auto;
