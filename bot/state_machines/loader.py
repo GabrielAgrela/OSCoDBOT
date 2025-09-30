@@ -584,6 +584,16 @@ def build_state_from_dict(cfg: AppConfig, raw: Mapping[str, Any], key: str | Non
     else:
         raise DefinitionError(f"State machine '{data.get('key', key)}' has unsupported type '{stype}'")
     state._label = data.get("label") or data.get("key") or key  # type: ignore[attr-defined]
+    machine_key = str(data.get("key") or key or "").strip()
+    try:
+        setattr(state, "_machine_key", machine_key)
+    except Exception:
+        pass
+    try:
+        setattr(ctx, "machine_key", machine_key)
+        setattr(ctx, "active_machine_key", machine_key)
+    except Exception:
+        pass
     return state, ctx, data
 
 

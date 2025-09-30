@@ -838,6 +838,7 @@ def api_metrics():
         counters = _counters.get_all()
     except Exception:
         counters = {}
+    active_machine = getattr(ctx, "active_machine_key", "") or getattr(ctx, "machine_key", "")
     data = {
         "running": True,
         "kind": _running.kind,
@@ -846,6 +847,8 @@ def api_metrics():
         "metrics": {
             "current_state": getattr(ctx, "current_state_name", ""),
             "current_step": getattr(ctx, "current_graph_step", ""),
+            "active_machine": active_machine,
+            "machine_key": getattr(ctx, "machine_key", ""),
             "last_action": getattr(ctx, "last_action_name", ""),
             "last_action_duration_s": float(getattr(ctx, "last_action_duration_s", 0.0)),
             "cycle_count": int(getattr(ctx, "cycle_count", 0)),

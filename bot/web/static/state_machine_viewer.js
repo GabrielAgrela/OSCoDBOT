@@ -15,6 +15,7 @@
     running: false,
     runningKind: 'single',
     runningModes: [],
+    metricsMachine: '',
     machineKey: null,
     machineLabel: '',
     machine: null,
@@ -427,7 +428,7 @@
         text = state.error;
       } else if (!state.machineKey) {
         text = 'Select a mode to preview its flow.';
-      } else if (state.previewReason === 'running') {
+      } else if (state.previewReason === 'running' || state.previewReason === 'live') {
         text = state.activeStep ? `Running — Active step: ${state.activeStep}` : 'Running…';
       } else if (state.previewReason === 'selection') {
         text = 'Previewing selected mode.';
@@ -471,6 +472,9 @@
   }
 
   function determinePreview() {
+    if (state.running && state.metricsMachine) {
+      return { key: state.metricsMachine, reason: 'live' };
+    }
     if (state.running && state.runningKind === 'single' && state.runningModes.length === 1) {
       return { key: state.runningModes[0], reason: 'running' };
     }
@@ -489,7 +493,7 @@
     const changedReason = reason !== state.previewReason;
     state.machineKey = key;
     state.previewReason = reason;
-    if (reason !== 'running') {
+    if (reason !== 'running' && reason !== 'live') {
       setActiveStep('');
     }
     if (!key) {
@@ -530,7 +534,8 @@
     state.running = !!detail.running;
     state.runningKind = detail.kind || 'single';
     state.runningModes = Array.isArray(detail.modes) ? detail.modes.filter(item => typeof item === 'string') : [];
-    if (!state.running || state.runningKind !== 'single') {
+    if (!state.running) {
+      state.metricsMachine = '';
       setActiveStep('');
     }
     updatePreviewTarget();
@@ -538,11 +543,23 @@
 
   function handleMetrics(evt) {
     const detail = evt && evt.detail ? evt.detail : {};
-    if (!detail.running || !state.running || state.runningKind !== 'single') {
+    const running = !!detail.running;
+    state.running = running;
+    if (typeof detail.kind === 'string' && detail.kind) {
+      state.runningKind = detail.kind;
+    }
+    if (Array.isArray(detail.modes)) {
+      state.runningModes = detail.modes.filter(item => typeof item === 'string');
+    }
+    const metrics = detail.metrics || {};
+    const activeMachine = typeof metrics.active_machine === 'string' ? metrics.active_machine.trim() : '';
+    state.metricsMachine = activeMachine;
+    if (!running) {
+      updatePreviewTarget();
       setActiveStep('');
       return;
     }
-    const metrics = detail.metrics || {};
+    updatePreviewTarget();
     const step = (typeof metrics.current_step === 'string' && metrics.current_step)
       ? metrics.current_step
       : (typeof metrics.current_state === 'string' ? metrics.current_state : '');
@@ -550,7 +567,15 @@
       setActiveStep('');
       return;
     }
-    if (state.previewReason !== 'running') {
+    if (!activeMachine || state.machineKey !== activeMachine) {
+      if (state.previewReason === 'live') {
+        setActiveStep('');
+      }
+      return;
+    }
+    const machineLoaded = state.machine && state.machine.key === activeMachine;
+    if (!machineLoaded) {
+      setActiveStep('');
       return;
     }
     setActiveStep(step);

@@ -14,6 +14,15 @@ def _build_checkstuck_state(cfg: AppConfig) -> tuple[State, Context]:
     return state, ctx
 
 
+def _set_active_machine(ctx: Context, state: State) -> None:
+    try:
+        key = getattr(state, "_machine_key", None)
+        if isinstance(key, str):
+            setattr(ctx, "active_machine_key", key)
+    except Exception:
+        pass
+
+
 class AlternatingState(State):
     def __init__(self, first: State, second: State) -> None:
         self.name = "alternating_state"
@@ -67,6 +76,7 @@ class AlternatingState(State):
                 self._last_label = label
         except Exception:
             pass
+        _set_active_machine(ctx, st)
         self._run_one_cycle(st, ctx)
 
 
@@ -123,6 +133,7 @@ class RoundRobinState(State):
                 self._last_label = label
         except Exception:
             pass
+        _set_active_machine(ctx, st)
         self._run_one_cycle(st, ctx)
         # Remove one-shot states after their first cycle so they don't run again
         try:
@@ -237,6 +248,7 @@ class WithCheckStuckState(State):
 
     def run_once(self, ctx: Context) -> None:
         # Run primary state for one cycle
+        _set_active_machine(ctx, self._primary)
         self._run_one_cycle(self._primary, ctx)
         # Log transition to check-stuck phase in pink for visibility
         try:
@@ -244,20 +256,30 @@ class WithCheckStuckState(State):
         except Exception:
             pass
         # Run the checker for one cycle
+        _set_active_machine(ctx, self._check)
         self._run_one_cycle(self._check, ctx)
 
 
 def build_with_checkstuck_state(cfg: AppConfig, builder: Builder, label: str | None = None) -> tuple[State, Context]:
-    primary, _ = builder(cfg)
+    primary, ctx = builder(cfg)
     # `checkstuck` is now defined through JSON like other machines, so reuse the
     # local loader helper to avoid circular imports with bot.states.__init__.
     checker, _ = _build_checkstuck_state(cfg)
-    ctx = Context(
-        window_title_substr=cfg.window_title_substr,
-        templates_dir=cfg.templates_dir,
-        save_shots=cfg.save_shots,
-        shots_dir=cfg.shots_dir,
-    )
+    try:
+        primary_key = getattr(primary, "_machine_key", None)
+        if isinstance(primary_key, str):
+            setattr(ctx, "machine_key", primary_key)
+            setattr(ctx, "active_machine_key", primary_key)
+    except Exception:
+        pass
+    try:
+        setattr(checker, "_machine_key", "checkstuck")
+    except Exception:
+        pass
     # Wrap primary with a dedicated checker instance
     wrapped = WithCheckStuckState(primary, checker, label=label)
+    try:
+        setattr(wrapped, "_machine_key", getattr(primary, "_machine_key", getattr(primary, "name", "")))
+    except Exception:
+        pass
     return wrapped, ctx
