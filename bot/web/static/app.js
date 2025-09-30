@@ -1,6 +1,7 @@
 let running = false;
 let paused = false;
 let lastLogId = 0;
+let metricsInflight = false;
 
 // Persist selected modes across visits
 const LS_SELECTED_KEY = 'modes.selected.v1';
@@ -302,6 +303,7 @@ async function start() {
     alert(running ? 'Failed to stop' : 'Failed to start');
   } finally {
     await status();
+    await metrics();
   }
 }
 
@@ -318,6 +320,7 @@ async function togglePause() {
     alert(paused ? 'Failed to resume' : 'Failed to pause');
   } finally {
     await status();
+    await metrics();
   }
 }
 
@@ -341,7 +344,7 @@ window.addEventListener('DOMContentLoaded', () => {
   setInterval(status, 1500);
   // Periodically fetch metrics to show window dimensions
   metrics();
-  setInterval(metrics, 1500);
+  setInterval(metrics, 500);
   fetchLogs();
   setInterval(fetchLogs, 1000);
   // Refresh debug screenshot
@@ -352,6 +355,8 @@ window.addEventListener('DOMContentLoaded', () => {
 });
 
 async function metrics() {
+  if (metricsInflight) return;
+  metricsInflight = true;
   try {
     const res = await fetch('/api/metrics');
     if (!res.ok) return;
@@ -401,6 +406,8 @@ async function metrics() {
     }
   } catch (e) {
     // ignore
+  } finally {
+    metricsInflight = false;
   }
 }
 
