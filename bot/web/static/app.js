@@ -102,11 +102,11 @@ function loadViewMode() {
 function applyViewMode(mode, notify = true) {
   const targetMode = mode === 'screenshot' ? 'screenshot' : 'preview';
   const shot = document.getElementById('shot-panel');
-  const viewer = document.getElementById('machine-viewer');
+  const viewerBody = document.getElementById('machine-viewer-body');
   const toggle = document.getElementById('view-toggle');
   const showPreview = targetMode !== 'screenshot';
   if (shot) shot.classList.toggle('is-hidden', showPreview);
-  if (viewer) viewer.classList.toggle('is-hidden', !showPreview);
+  if (viewerBody) viewerBody.classList.toggle('is-hidden', !showPreview);
   if (toggle) {
     toggle.textContent = showPreview ? 'Show Screenshot' : 'Show Machine Preview';
     toggle.setAttribute('aria-pressed', showPreview ? 'true' : 'false');
