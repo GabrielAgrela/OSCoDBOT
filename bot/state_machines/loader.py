@@ -559,6 +559,42 @@ def load_definition(key: str) -> Mapping[str, Any]:
     return data
 
 
+def resolve_definition(
+    cfg: AppConfig,
+    raw: Mapping[str, Any] | None = None,
+    *,
+    key: str | None = None,
+) -> Dict[str, Any]:
+    """Return a template-expanded copy of the definition."""
+
+    if raw is None:
+        if key is None:
+            raise ValueError("resolve_definition requires a key when raw data is not provided")
+        raw = load_definition(key)
+    if key is None:
+        key = str(raw.get("key") or "") or None
+
+    resolved = _apply_templates(cfg, raw)
+    result = dict(resolved)
+
+    if key:
+        result.setdefault("key", key)
+
+    label = raw.get("label") if isinstance(raw, Mapping) else None
+    if label and not result.get("label"):
+        result["label"] = label
+
+    metadata = raw.get("metadata") if isinstance(raw, Mapping) else None
+    if isinstance(metadata, Mapping):
+        result.setdefault("metadata", dict(metadata))
+
+    # Ensure metadata is always a dict for downstream consumers.
+    if not isinstance(result.get("metadata"), Mapping):
+        result["metadata"] = {}
+
+    return result
+
+
 def get_state_dir() -> Path:
     return _BASE_DIR
 

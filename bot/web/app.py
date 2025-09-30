@@ -352,11 +352,17 @@ def state_machines_page():
     return render_template("state_machines.html")
 
 
-def _serialize_state_summary(key: str, data: Dict[str, object]) -> Dict[str, object]:
-    typ = str(data.get("type") or "")
-    steps = data.get("steps")
+def _serialize_state_summary(
+    key: str,
+    data: Dict[str, object],
+    resolved: Optional[Dict[str, object]] = None,
+) -> Dict[str, object]:
+    source = resolved if isinstance(resolved, dict) else data
+    typ = str(source.get("type") or data.get("type") or "")
+    steps = source.get("steps")
     step_count = len(steps) if isinstance(steps, list) else None
-    meta = data.get("metadata") if isinstance(data.get("metadata"), dict) else {}
+    meta_raw = data.get("metadata")
+    meta = meta_raw if isinstance(meta_raw, dict) else {}
     return {
         "key": key,
         "label": data.get("label") or key,
@@ -371,12 +377,21 @@ def _serialize_state_summary(key: str, data: Dict[str, object]) -> Dict[str, obj
 @app.get("/api/state-machines")
 def api_list_state_machines():
     items: List[Dict[str, object]] = []
+    cfg = config.DEFAULT_CONFIG
     for key in state_loader.list_definitions():
         try:
-            data = state_loader.load_definition(key)
+            raw = state_loader.load_definition(key)
+            resolved = state_loader.resolve_definition(cfg, raw, key=key)
         except Exception:
             continue
-        items.append(_serialize_state_summary(key, dict(data)))
+        data = dict(raw) if isinstance(raw, dict) else {}
+        if isinstance(resolved, dict):
+            for attr in ("type", "start", "loop_sleep_s", "steps"):
+                if attr not in data and resolved.get(attr) is not None:
+                    data[attr] = resolved[attr]
+            if "metadata" not in data and isinstance(resolved.get("metadata"), dict):
+                data["metadata"] = dict(resolved["metadata"])
+        items.append(_serialize_state_summary(key, data, resolved))
     return jsonify({"items": items})
 
 
@@ -387,11 +402,30 @@ def api_get_state_machine(key: str):
     except ValueError as exc:
         return jsonify({"error": str(exc)}), 400
     try:
-        data = state_loader.load_definition(norm)
+        raw = state_loader.load_definition(norm)
     except FileNotFoundError:
         return jsonify({"error": "Not found"}), 404
     except Exception as exc:
         return jsonify({"error": str(exc)}), 400
+    cfg = config.DEFAULT_CONFIG
+    try:
+        resolved = state_loader.resolve_definition(cfg, raw, key=norm)
+    except Exception:
+        resolved = None
+
+    data = dict(raw) if isinstance(raw, dict) else {}
+    if isinstance(resolved, dict):
+        for attr in ("type", "start", "loop_sleep_s", "steps"):
+            value = resolved.get(attr)
+            if attr not in data or data.get(attr) in (None, ""):
+                if isinstance(value, list):
+                    data[attr] = json.loads(json.dumps(value))
+                elif value is not None:
+                    data[attr] = value
+        if isinstance(resolved.get("metadata"), dict):
+            meta = data.get("metadata")
+            if not isinstance(meta, dict):
+                data["metadata"] = dict(resolved["metadata"])
     return jsonify(data)
 
 
