@@ -7,6 +7,7 @@ let metricsInflight = false;
 const LS_SELECTED_KEY = 'modes.selected.v1';
 const LS_COUNTERS_KEY = 'counters.v1';
 const LS_SESSION_KEY = 'counters.session.v1';
+const LS_VIEW_MODE_KEY = 'dashboard.viewMode.v1';
 
 function saveSelectionLS(arr) {
   try {
@@ -78,6 +79,58 @@ function loadSessionBaseline() {
 
 function clearSessionBaseline() {
   try { localStorage.removeItem(LS_SESSION_KEY); } catch (e) { /* ignore */ }
+}
+
+function saveViewMode(mode) {
+  try {
+    const value = mode === 'screenshot' ? 'screenshot' : 'preview';
+    localStorage.setItem(LS_VIEW_MODE_KEY, value);
+  } catch (e) {
+    // ignore
+  }
+}
+
+function loadViewMode() {
+  try {
+    const stored = localStorage.getItem(LS_VIEW_MODE_KEY);
+    return stored === 'screenshot' ? 'screenshot' : 'preview';
+  } catch (e) {
+    return 'preview';
+  }
+}
+
+function applyViewMode(mode, notify = true) {
+  const targetMode = mode === 'screenshot' ? 'screenshot' : 'preview';
+  const shot = document.getElementById('shot-panel');
+  const viewer = document.getElementById('machine-viewer');
+  const toggle = document.getElementById('view-toggle');
+  const showPreview = targetMode !== 'screenshot';
+  if (shot) shot.classList.toggle('is-hidden', showPreview);
+  if (viewer) viewer.classList.toggle('is-hidden', !showPreview);
+  if (toggle) {
+    toggle.textContent = showPreview ? 'Show Screenshot' : 'Show Machine Preview';
+    toggle.setAttribute('aria-pressed', showPreview ? 'true' : 'false');
+  }
+  if (notify) {
+    try {
+      document.dispatchEvent(new CustomEvent('bot-view-mode', { detail: { mode: targetMode } }));
+    } catch (e) {
+      // ignore broadcast issues
+    }
+  }
+}
+
+function initViewToggle() {
+  const btn = document.getElementById('view-toggle');
+  if (!btn) return;
+  let currentMode = loadViewMode();
+  btn.addEventListener('click', () => {
+    currentMode = currentMode === 'screenshot' ? 'preview' : 'screenshot';
+    saveViewMode(currentMode);
+    applyViewMode(currentMode);
+  });
+  // Ensure persisted state is applied on load
+  applyViewMode(currentMode);
 }
 
 function broadcastSelection(selection) {
@@ -336,6 +389,7 @@ window.addEventListener('DOMContentLoaded', () => {
   const saveBtn = document.getElementById('save-settings');
   if (saveBtn) saveBtn.addEventListener('click', saveSettings);
   initModeInteractions();
+  initViewToggle();
   applySavedSelection();
   // Show saved counters immediately before first metrics fetch
   applySavedCounters();

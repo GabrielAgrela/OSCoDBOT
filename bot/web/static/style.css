@@ -1,6 +1,6 @@
 :root { color-scheme: light dark; --bg:#0f141a; --card:#141b22; --mut:#cbd5e1; --fg:#e2e8f0; --pri:#3b82f6; --pri2:#2563eb; --bord:#263041; --side:50px; }
 * { box-sizing: border-box; }
-html,body { height:100%; }
+html,body { min-height:100%; }
 /* Allow page scrolling while keeping fixed side panel */
 body { font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif; margin: 0; background: linear-gradient(180deg, #0b1220 0%, #0f141a 100%); color: var(--fg); overflow-y: auto; }
 /* Content area with reserved space for fixed right panel */
@@ -192,7 +192,9 @@ body { font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, A
 .state-machines .status.warn { color:#facc15; }
 
 .machine-viewer { margin-top: 12px; padding: 12px; background: rgba(15,20,26,0.95); border:1px solid var(--bord); border-radius: 10px; box-shadow:0 6px 18px rgba(0,0,0,0.25); display:flex; flex-direction:column; gap:12px; }
-.machine-viewer-header { display:flex; flex-direction:column; gap:4px; }
+.machine-viewer-header { display:flex; justify-content:space-between; gap:12px; align-items:flex-start; flex-wrap:wrap; }
+.machine-viewer-heading { display:flex; flex-direction:column; gap:4px; }
+.machine-viewer-toggle { align-self:flex-start; }
 .machine-viewer-title { font-size:14px; font-weight:600; letter-spacing:.04em; text-transform:uppercase; opacity:.85; }
 .machine-viewer-status { font-size:11px; opacity:.8; }
 .machine-viewer-body { min-height:260px; display:flex; }
@@ -202,6 +204,7 @@ body { font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, A
 .machine-viewer-empty { position:absolute; inset:0; display:flex; align-items:center; justify-content:center; text-align:center; font-size:12px; padding:16px; color:#cbd5e1; opacity:0.85; backdrop-filter:blur(2px); background:rgba(15,23,42,0.35); z-index:2; pointer-events:none; }
 .machine-viewer.has-graph .machine-viewer-empty { display:none; }
 .machine-viewer svg { width:100%; height:100%; }
+.is-hidden { display:none !important; }
 
 
 
