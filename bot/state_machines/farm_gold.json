@@ -1,0 +1,30 @@
+{
+  "key": "farm_gold",
+  "label": "Farm Gold",
+  "context": "default",
+  "metadata": {
+    "category": "Primary Farming",
+    "badge": "Loop",
+    "description": "Finds gold sources and sends available legions through gather, create, and march steps with retries.",
+    "tags": [
+      "farm",
+      "gold",
+      "gather"
+    ]
+  },
+  "extends": {
+    "template": "farm_common",
+    "options": {
+      "key": "gold",
+      "resource_step_label": "GoldAny",
+      "resource_templates": [
+        "GoldMine.png",
+        "GoldMineEnabled.png",
+        "GoldDeposit.png",
+        "GoldDepositEnabled.png"
+      ],
+      "wait_after_gather_retry_s": 2.0,
+      "wait_after_legions_s": 2.0
+    }
+  }
+}

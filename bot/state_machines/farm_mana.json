@@ -1,0 +1,26 @@
+{
+  "key": "farm_mana",
+  "label": "Farm Mana",
+  "context": "default",
+  "metadata": {
+    "category": "Primary Farming",
+    "badge": "Loop",
+    "description": "Automates mana crystal farming using the standard magnifier -> search -> gather flow.",
+    "tags": [
+      "farm",
+      "mana",
+      "resource"
+    ]
+  },
+  "extends": {
+    "template": "farm_common",
+    "options": {
+      "key": "mana",
+      "resource_step_label": "ManaPoolAny",
+      "resource_templates": [
+        "ManaPool.png",
+        "ManaPoolEnabled.png"
+      ]
+    }
+  }
+}

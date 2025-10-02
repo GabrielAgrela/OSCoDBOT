@@ -77,6 +77,12 @@ class SequenceState:
         self._loop_sleep_s = loop_sleep_s
 
     def run_once(self, ctx: Context) -> None:
+        try:
+            key = getattr(self, "_machine_key", None)
+            if isinstance(key, str):
+                ctx.active_machine_key = key
+        except Exception:
+            pass
         ctx.current_state_name = self.name
         # Honor pause at the start of a cycle
         try:
@@ -145,6 +151,12 @@ class StateMachine:
             pass
         try:
             ctx.last_progress_ts = time.time()
+        except Exception:
+            pass
+        try:
+            key = getattr(ctx, "machine_key", None)
+            if isinstance(key, str):
+                ctx.active_machine_key = key
         except Exception:
             pass
         # Bring the target window to foreground once at start
@@ -273,6 +285,12 @@ class GraphState:
             time.sleep(self._loop_sleep_s)
             return
         last_result: Optional[bool] = None
+        try:
+            key = getattr(self, "_machine_key", None)
+            if isinstance(key, str):
+                ctx.active_machine_key = key
+        except Exception:
+            pass
         ctx.current_state_name = self.name
         ctx.current_graph_step = step.name
         # Honor pause at the start of a step

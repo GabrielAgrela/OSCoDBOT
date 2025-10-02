@@ -1,0 +1,620 @@
+{
+  "type": "graph",
+  "start": "OpenAlliancePanel",
+  "loop_sleep_s": 0.05,
+  "steps": [
+    {
+      "name": "OpenAlliancePanel",
+      "actions": [
+        {
+          "type": "Screenshot",
+          "name": "cap_alliance_1"
+        },
+        {
+          "type": "FindAndClick",
+          "name": "AllianceIcon",
+          "templates": [
+            "AllianceIcon.png"
+          ],
+          "region_pct": [
+            0.0,
+            0.0,
+            1.0,
+            1.0
+          ],
+          "threshold": {
+            "$config": "match_threshold"
+          },
+          "verify_threshold": {
+            "$config": "verify_threshold"
+          }
+        },
+        {
+          "type": "Wait",
+          "name": "Wait1",
+          "seconds": 0.5,
+          "randomize": true
+        }
+      ],
+      "on_success": "OpenTerritoryPanel",
+      "on_failure": "RevealAllianceMenu"
+    },
+    {
+      "name": "RevealAllianceMenu",
+      "actions": [
+        {
+          "type": "Screenshot",
+          "name": "cap_menu_1"
+        },
+        {
+          "type": "FindAndClick",
+          "name": "MenuButton",
+          "templates": [
+            "MenuButton.png"
+          ],
+          "region_pct": [
+            0.0,
+            0.0,
+            1.0,
+            1.0
+          ],
+          "threshold": {
+            "$config": "match_threshold"
+          },
+          "verify_threshold": {
+            "$config": "verify_threshold"
+          }
+        },
+        {
+          "type": "Wait",
+          "name": "WaitMenu",
+          "seconds": 0.5,
+          "randomize": true
+        }
+      ],
+      "on_success": "RetryOpenAlliance",
+      "on_failure": "CompleteCycle"
+    },
+    {
+      "name": "RetryOpenAlliance",
+      "actions": [
+        {
+          "type": "Screenshot",
+          "name": "cap_alliance_retry"
+        },
+        {
+          "type": "FindAndClick",
+          "name": "AllianceIcon",
+          "templates": [
+            "AllianceIcon.png"
+          ],
+          "region_pct": [
+            0.0,
+            0.0,
+            1.0,
+            1.0
+          ],
+          "threshold": {
+            "$config": "match_threshold"
+          },
+          "verify_threshold": {
+            "$config": "verify_threshold"
+          }
+        },
+        {
+          "type": "Wait",
+          "name": "Wait1Retry",
+          "seconds": 0.5,
+          "randomize": true
+        }
+      ],
+      "on_success": "OpenTerritoryPanel",
+      "on_failure": "CompleteCycle"
+    },
+    {
+      "name": "OpenTerritoryPanel",
+      "actions": [
+        {
+          "type": "Screenshot",
+          "name": "cap_territory_1"
+        },
+        {
+          "type": "FindAndClick",
+          "name": "TerritoryIcon",
+          "templates": [
+            "TerritoryIcon.png"
+          ],
+          "region_pct": [
+            0.0,
+            0.0,
+            1.0,
+            1.0
+          ],
+          "threshold": {
+            "$config": "match_threshold"
+          },
+          "verify_threshold": {
+            "$config": "verify_threshold"
+          }
+        },
+        {
+          "type": "Wait",
+          "name": "Wait2",
+          "seconds": 0.5,
+          "randomize": true
+        }
+      ],
+      "on_success": "HideTerritoryFirstAttempt",
+      "on_failure": "CompleteCycle"
+    },
+    {
+      "name": "HideTerritoryFirstAttempt",
+      "actions": [
+        {
+          "type": "Screenshot",
+          "name": "cap_hide_1"
+        },
+        {
+          "type": "FindAndClick",
+          "name": "AllianceTerritoryHideButton",
+          "templates": [
+            "AllianceTerritoryHideButton.png"
+          ],
+          "region_pct": [
+            0.0,
+            0.0,
+            1.0,
+            1.0
+          ],
+          "threshold": {
+            "$config": "match_threshold"
+          },
+          "verify_threshold": {
+            "$config": "verify_threshold"
+          }
+        },
+        {
+          "type": "Wait",
+          "name": "Wait3",
+          "seconds": 0.5,
+          "randomize": true
+        }
+      ],
+      "on_success": "HideTerritorySecondAttempt",
+      "on_failure": "OpenResourceCentersList"
+    },
+    {
+      "name": "HideTerritorySecondAttempt",
+      "actions": [
+        {
+          "type": "Screenshot",
+          "name": "cap_hide_2"
+        },
+        {
+          "type": "FindAndClick",
+          "name": "AllianceTerritoryHideButton",
+          "templates": [
+            "AllianceTerritoryHideButton.png"
+          ],
+          "region_pct": [
+            0.0,
+            0.0,
+            1.0,
+            1.0
+          ],
+          "threshold": {
+            "$config": "match_threshold"
+          },
+          "verify_threshold": {
+            "$config": "verify_threshold"
+          }
+        },
+        {
+          "type": "Wait",
+          "name": "Wait4",
+          "seconds": 0.5,
+          "randomize": true
+        }
+      ],
+      "on_success": "HideTerritoryThirdAttempt",
+      "on_failure": "OpenResourceCentersList"
+    },
+    {
+      "name": "HideTerritoryThirdAttempt",
+      "actions": [
+        {
+          "type": "Screenshot",
+          "name": "cap_hide_3"
+        },
+        {
+          "type": "FindAndClick",
+          "name": "AllianceTerritoryHideButton",
+          "templates": [
+            "AllianceTerritoryHideButton.png"
+          ],
+          "region_pct": [
+            0.0,
+            0.0,
+            1.0,
+            1.0
+          ],
+          "threshold": {
+            "$config": "match_threshold"
+          },
+          "verify_threshold": {
+            "$config": "verify_threshold"
+          }
+        },
+        {
+          "type": "Wait",
+          "name": "Wait5",
+          "seconds": 0.5,
+          "randomize": true
+        }
+      ],
+      "on_success": "HideTerritoryFourthAttempt",
+      "on_failure": "OpenResourceCentersList"
+    },
+    {
+      "name": "HideTerritoryFourthAttempt",
+      "actions": [
+        {
+          "type": "Screenshot",
+          "name": "cap_hide_4"
+        },
+        {
+          "type": "FindAndClick",
+          "name": "AllianceTerritoryHideButton",
+          "templates": [
+            "AllianceTerritoryHideButton.png"
+          ],
+          "region_pct": [
+            0.0,
+            0.0,
+            1.0,
+            1.0
+          ],
+          "threshold": {
+            "$config": "match_threshold"
+          },
+          "verify_threshold": {
+            "$config": "verify_threshold"
+          }
+        },
+        {
+          "type": "Wait",
+          "name": "Wait6",
+          "seconds": 0.5,
+          "randomize": true
+        }
+      ],
+      "on_success": "HideTerritoryFifthAttempt",
+      "on_failure": "OpenResourceCentersList"
+    },
+    {
+      "name": "HideTerritoryFifthAttempt",
+      "actions": [
+        {
+          "type": "Screenshot",
+          "name": "cap_hide_5"
+        },
+        {
+          "type": "FindAndClick",
+          "name": "AllianceTerritoryHideButton",
+          "templates": [
+            "AllianceTerritoryHideButton.png"
+          ],
+          "region_pct": [
+            0.0,
+            0.0,
+            1.0,
+            1.0
+          ],
+          "threshold": {
+            "$config": "match_threshold"
+          },
+          "verify_threshold": {
+            "$config": "verify_threshold"
+          }
+        },
+        {
+          "type": "Wait",
+          "name": "Wait7",
+          "seconds": 0.5,
+          "randomize": true
+        }
+      ],
+      "on_success": "OpenResourceCentersList",
+      "on_failure": "OpenResourceCentersList"
+    },
+    {
+      "name": "OpenResourceCentersList",
+      "actions": [
+        {
+          "type": "Screenshot",
+          "name": "cap_arc_1"
+        },
+        {
+          "type": "FindAndClick",
+          "name": "AllianceResourceCentersButton",
+          "templates": [
+            "AllianceResourceCentersButton.png"
+          ],
+          "region_pct": [
+            0.0,
+            0.0,
+            1.0,
+            1.0
+          ],
+          "threshold": {
+            "$config": "match_threshold"
+          },
+          "verify_threshold": {
+            "$config": "verify_threshold"
+          }
+        },
+        {
+          "type": "Wait",
+          "name": "Wait8",
+          "seconds": 0.5,
+          "randomize": true
+        }
+      ],
+      "on_success": "OpenCreateLegionPanel",
+      "on_failure": "CompleteCycle"
+    },
+    {
+      "name": "OpenCreateLegionPanel",
+      "actions": [
+        {
+          "type": "Screenshot",
+          "name": "cap_plus_1"
+        },
+        {
+          "type": "FindAndClick",
+          "name": "AllianceResouceCenterPlusButton",
+          "templates": [
+            "AllianceResouceCenterPlusButton.png"
+          ],
+          "region_pct": [
+            0.0,
+            0.0,
+            1.0,
+            1.0
+          ],
+          "threshold": {
+            "$config": "match_threshold"
+          },
+          "verify_threshold": {
+            "$config": "verify_threshold"
+          }
+        },
+        {
+          "type": "Wait",
+          "name": "Wait9",
+          "seconds": 0.5,
+          "randomize": true
+        }
+      ],
+      "on_success": "ClickCreateLegions",
+      "on_failure": "CompleteCycle"
+    },
+    {
+      "name": "ClickCreateLegions",
+      "actions": [
+        {
+          "type": "Screenshot",
+          "name": "cap_create_legions_1"
+        },
+        {
+          "type": "FindAndClick",
+          "name": "CreateLegionsButton",
+          "templates": [
+            "CreateLegionsButton.png"
+          ],
+          "region_pct": {
+            "$config": "create_legions_button_region_pct"
+          },
+          "threshold": {
+            "$config": "match_threshold"
+          },
+          "verify_threshold": {
+            "$config": "verify_threshold"
+          }
+        },
+        {
+          "type": "Wait",
+          "name": "Wait10",
+          "seconds": 0.5,
+          "randomize": true
+        }
+      ],
+      "on_success": "RemoveCommanderFromLegion",
+      "on_failure": "FallbackTapCenter"
+    },
+    {
+      "name": "FallbackTapCenter",
+      "actions": [
+        {
+          "type": "Screenshot",
+          "name": "cap_fb_center"
+        },
+        {
+          "type": "ClickPercent",
+          "name": "ClickCenter",
+          "x_pct": 0.5,
+          "y_pct": 0.5
+        },
+        {
+          "type": "Wait",
+          "name": "WaitFB1",
+          "seconds": 0.5,
+          "randomize": true
+        }
+      ],
+      "on_success": "FallbackTapGather",
+      "on_failure": "FallbackTapGather"
+    },
+    {
+      "name": "FallbackTapGather",
+      "actions": [
+        {
+          "type": "Screenshot",
+          "name": "cap_fb_gather"
+        },
+        {
+          "type": "FindAndClick",
+          "name": "GatherButton",
+          "templates": [
+            "GatherButton.png"
+          ],
+          "region_pct": {
+            "$config": "gather_button_region_pct"
+          },
+          "threshold": {
+            "$config": "match_threshold"
+          },
+          "verify_threshold": {
+            "$config": "verify_threshold"
+          }
+        },
+        {
+          "type": "Wait",
+          "name": "WaitFB2",
+          "seconds": 0.5,
+          "randomize": true
+        }
+      ],
+      "on_success": "FallbackOpenCreateLegionIcon",
+      "on_failure": "CompleteCycle"
+    },
+    {
+      "name": "FallbackOpenCreateLegionIcon",
+      "actions": [
+        {
+          "type": "Screenshot",
+          "name": "cap_fb_icon"
+        },
+        {
+          "type": "FindAndClick",
+          "name": "AllianceResourceCenterCreateLegionIcon",
+          "templates": [
+            "AllianceResourceCenterCreateLegionIcon.png"
+          ],
+          "region_pct": [
+            0.0,
+            0.0,
+            1.0,
+            1.0
+          ],
+          "threshold": {
+            "$config": "match_threshold"
+          },
+          "verify_threshold": {
+            "$config": "verify_threshold"
+          }
+        },
+        {
+          "type": "Wait",
+          "name": "WaitFB3",
+          "seconds": 0.5,
+          "randomize": true
+        }
+      ],
+      "on_success": "ClickCreateLegions",
+      "on_failure": "CompleteCycle"
+    },
+    {
+      "name": "RemoveCommanderFromLegion",
+      "actions": [
+        {
+          "type": "Screenshot",
+          "name": "cap_remove_commander"
+        },
+        {
+          "type": "FindAndClick",
+          "name": "RemoveCommanderButton",
+          "templates": [
+            "RemoveCommanderButton.png"
+          ],
+          "region_pct": [
+            0.0,
+            0.0,
+            1.0,
+            1.0
+          ],
+          "threshold": {
+            "$config": "match_threshold"
+          },
+          "verify_threshold": {
+            "$config": "verify_threshold"
+          }
+        },
+        {
+          "type": "Wait",
+          "name": "WaitRemoveCommander",
+          "seconds": 0.5,
+          "randomize": true
+        }
+      ],
+      "on_success": "ClickMarchButton",
+      "on_failure": "ClickMarchButton"
+    },
+    {
+      "name": "ClickMarchButton",
+      "actions": [
+        {
+          "type": "Screenshot",
+          "name": "cap_march_1"
+        },
+        {
+          "type": "FindAndClick",
+          "name": "March",
+          "templates": [
+            "March.png"
+          ],
+          "region_pct": {
+            "$config": "march_button_region_pct"
+          },
+          "threshold": {
+            "$config": "match_threshold"
+          },
+          "verify_threshold": {
+            "$config": "verify_threshold"
+          }
+        },
+        {
+          "type": "Wait",
+          "name": "Wait11",
+          "seconds": 0.5,
+          "randomize": true
+        }
+      ],
+      "on_success": "CompleteCycle",
+      "on_failure": "CompleteCycle"
+    },
+    {
+      "name": "CompleteCycle",
+      "actions": [
+        {
+          "type": "EndCycle",
+          "name": "end_cycle"
+        }
+      ]
+    }
+  ],
+  "key": "farm_alliance_resource_center",
+  "label": "Farm Alliance Resource Center",
+  "metadata": {
+    "category": "Alliance & Events",
+    "badge": "Alliance",
+    "description": "Navigates the alliance territory panel to queue Alliance Resource Center runs with fallback gather steps.",
+    "tags": [
+      "alliance",
+      "resource",
+      "center",
+      "event"
+    ]
+  },
+  "context": "default"
+}

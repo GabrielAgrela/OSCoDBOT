@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>CoDBOT</title>
     <link rel="icon" type="image/png" href="/static/favicon.png" />
-    <link rel="stylesheet" href="/static/style.css?v=5" />
+    <link rel="stylesheet" href="/static/style.css?v=6" />
   </head>
   <body>
     <div class="container">
@@ -31,7 +31,23 @@
         </div>
       </section>
 
-      <section class="panel">
+      <section id="machine-viewer" class="panel machine-viewer" aria-label="State machine preview">
+        <div class="machine-viewer-header">
+          <div class="machine-viewer-heading">
+            <div class="machine-viewer-title" id="machine-viewer-title">State Machine Preview</div>
+            <div class="machine-viewer-status" id="machine-viewer-status">Select a mode to preview its flow.</div>
+          </div>
+          <button type="button" id="view-toggle" class="btn subtle machine-viewer-toggle" aria-pressed="true">Show Screenshot</button>
+        </div>
+        <div id="machine-viewer-body" class="machine-viewer-body">
+          <div class="diagram-wrapper">
+            <svg id="machine-viewer-canvas" viewBox="0 0 960 640" role="img" aria-label="Current state machine diagram"></svg>
+            <div class="machine-viewer-empty" id="machine-viewer-empty">Select a mode to preview its flow.</div>
+          </div>
+        </div>
+      </section>
+
+      <section id="control-panel" class="panel">
         <div class="controls">
           <button id="start" class="btn primary" disabled>
             <span class="spinner" aria-hidden="true"></span>
@@ -41,6 +57,7 @@
             <span id="pause-label">Pause</span>
           </button>
           <button id="settings-toggle" class="btn" title="Show settings">Settings</button>
+          <a href="/state-machines" class="btn" title="Manage state machines">State Machines</a>
           <button id="stop-close" class="btn danger" title="Stop the bot and close Call of Dragons">
             Stop &amp; Close Game
           </button>
@@ -67,5 +84,6 @@
 
     </div>
     <script src="/static/app.js?v=6"></script>
+    <script src="/static/state_machine_viewer.js?v=1"></script>
   </body>
   </html>

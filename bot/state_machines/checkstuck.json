@@ -1,0 +1,196 @@
+{
+  "type": "graph",
+  "start": "ClickBackArrow",
+  "loop_sleep_s": 0.05,
+  "steps": [
+    {
+      "name": "ClickBackArrow",
+      "actions": [
+        {
+          "type": "Screenshot",
+          "name": "checkstuck_cap_1"
+        },
+        {
+          "type": "FindAndClick",
+          "name": "BackArrow",
+          "templates": [
+            "BackArrow.png"
+          ],
+          "region_pct": [
+            0.0,
+            0.0,
+            0.1,
+            0.1
+          ],
+          "threshold": {
+            "$config": "match_threshold"
+          },
+          "verify_threshold": {
+            "$config": "verify_threshold"
+          }
+        }
+      ],
+      "on_success": "ClickBackArrow",
+      "on_failure": "ClickCloseButton"
+    },
+    {
+      "name": "ClickCloseButton",
+      "actions": [
+        {
+          "type": "Screenshot",
+          "name": "checkstuck_cap_2"
+        },
+        {
+          "type": "FindAndClick",
+          "name": "CloseButton",
+          "templates": [
+            "CloseButton.png"
+          ],
+          "region_pct": {
+            "$config": "resource_buy_window_close_button_region_pct"
+          },
+          "threshold": {
+            "$config": "match_threshold"
+          },
+          "verify_threshold": {
+            "$config": "verify_threshold"
+          }
+        }
+      ],
+      "on_success": "EndCycleStep",
+      "on_failure": "ClickReconnectConfirm"
+    },
+    {
+      "name": "ClickReconnectConfirm",
+      "actions": [
+        {
+          "type": "Screenshot",
+          "name": "checkstuck_cap_3"
+        },
+        {
+          "type": "FindAndClick",
+          "name": "ReconnectConfirmButton",
+          "templates": [
+            "ReconnectConfirmButton.png"
+          ],
+          "region_pct": [
+            0.0,
+            0.0,
+            1.0,
+            1.0
+          ],
+          "threshold": {
+            "$config": "match_threshold"
+          },
+          "verify_threshold": {
+            "$config": "verify_threshold"
+          }
+        }
+      ],
+      "on_success": "EndCycleStep",
+      "on_failure": "ChatCloseButton"
+    },
+    {
+      "name": "ChatCloseButton",
+      "actions": [
+        {
+          "type": "Screenshot",
+          "name": "checkstuck_cap_3"
+        },
+        {
+          "type": "FindAndClick",
+          "name": "ChatCloseButton",
+          "templates": [
+            "ChatCloseButton.png"
+          ],
+          "region_pct": [
+            0.0,
+            0.0,
+            1.0,
+            1.0
+          ],
+          "threshold": {
+            "$config": "match_threshold"
+          },
+          "verify_threshold": {
+            "$config": "verify_threshold"
+          }
+        }
+      ],
+      "on_success": "EndCycleStep",
+      "on_failure": "OfferCloseButton"
+    },
+    {
+      "name": "OfferCloseButton",
+      "actions": [
+        {
+          "type": "Screenshot",
+          "name": "checkstuck_cap_3"
+        },
+        {
+          "type": "FindAndClick",
+          "name": "OfferCloseButton",
+          "templates": [
+            "OfferCloseButton.png"
+          ],
+          "region_pct": [
+            0.0,
+            0.0,
+            1.0,
+            1.0
+          ],
+          "threshold": {
+            "$config": "match_threshold"
+          },
+          "verify_threshold": {
+            "$config": "verify_threshold"
+          }
+        }
+      ],
+      "on_success": "EndCycleStep",
+      "on_failure": "CloseNewHeroesButton"
+    },
+    {
+      "name": "CloseNewHeroesButton",
+      "actions": [
+        {
+          "type": "Screenshot",
+          "name": "checkstuck_cap_3"
+        },
+        {
+          "type": "FindAndClick",
+          "name": "CloseNewHeroesButton",
+          "templates": [
+            "CloseNewHeroesButton.png"
+          ],
+          "region_pct": [
+            0.0,
+            0.0,
+            1.0,
+            1.0
+          ],
+          "threshold": {
+            "$config": "match_threshold"
+          },
+          "verify_threshold": 0.9
+        }
+      ],
+      "on_success": "EndCycleStep",
+      "on_failure": "EndCycleStep"
+    },
+    {
+      "name": "EndCycleStep",
+      "actions": [
+        {
+          "type": "EndCycle",
+          "name": "end_cycle"
+        }
+      ],
+      "on_success": "ClickBackArrow",
+      "on_failure": "ClickBackArrow"
+    }
+  ],
+  "key": "checkstuck",
+  "label": "Check Stuck",
+  "context": "default"
+}

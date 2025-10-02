@@ -5,8 +5,22 @@ import random
 
 from bot.config import AppConfig
 from bot.core.state_machine import Context, State, GraphState
+from bot.state_machines import loader as _sm_loader
 from bot.core import logs
-from .checkstuck import build_checkstuck_state
+
+
+def _build_checkstuck_state(cfg: AppConfig) -> tuple[State, Context]:
+    state, ctx, _ = _sm_loader.build_state_from_json(cfg, "checkstuck")
+    return state, ctx
+
+
+def _set_active_machine(ctx: Context, state: State) -> None:
+    try:
+        key = getattr(state, "_machine_key", None)
+        if isinstance(key, str):
+            setattr(ctx, "active_machine_key", key)
+    except Exception:
+        pass
 
 
 class AlternatingState(State):
@@ -62,6 +76,7 @@ class AlternatingState(State):
                 self._last_label = label
         except Exception:
             pass
+        _set_active_machine(ctx, st)
         self._run_one_cycle(st, ctx)
 
 
@@ -118,6 +133,7 @@ class RoundRobinState(State):
                 self._last_label = label
         except Exception:
             pass
+        _set_active_machine(ctx, st)
         self._run_one_cycle(st, ctx)
         # Remove one-shot states after their first cycle so they don't run again
         try:
@@ -162,8 +178,8 @@ def build_alternating_state(
     # Build underlying states and wrap each with its own check-stuck
     first_state, _ = first_builder(cfg)
     second_state, _ = second_builder(cfg)
-    chk1, _ = build_checkstuck_state(cfg)
-    chk2, _ = build_checkstuck_state(cfg)
+    chk1, _ = _build_checkstuck_state(cfg)
+    chk2, _ = _build_checkstuck_state(cfg)
     wrapped_first = WithCheckStuckState(first_state, chk1, label=first_label)
     wrapped_second = WithCheckStuckState(second_state, chk2, label=second_label)
     ctx = Context(
@@ -186,7 +202,7 @@ def build_round_robin_state(cfg: AppConfig, builders: Sequence[Builder] | Sequen
             builder = item  # type: ignore[assignment]
             label = None
         st, _ = builder(cfg)
-        chk, _ = build_checkstuck_state(cfg)
+        chk, _ = _build_checkstuck_state(cfg)
         states.append(WithCheckStuckState(st, chk, label=label))
     ctx = Context(
         window_title_substr=cfg.window_title_substr,
@@ -232,6 +248,7 @@ class WithCheckStuckState(State):
 
     def run_once(self, ctx: Context) -> None:
         # Run primary state for one cycle
+        _set_active_machine(ctx, self._primary)
         self._run_one_cycle(self._primary, ctx)
         # Log transition to check-stuck phase in pink for visibility
         try:
@@ -239,18 +256,30 @@ class WithCheckStuckState(State):
         except Exception:
             pass
         # Run the checker for one cycle
+        _set_active_machine(ctx, self._check)
         self._run_one_cycle(self._check, ctx)
 
 
 def build_with_checkstuck_state(cfg: AppConfig, builder: Builder, label: str | None = None) -> tuple[State, Context]:
-    primary, _ = builder(cfg)
-    checker, _ = build_checkstuck_state(cfg)
-    ctx = Context(
-        window_title_substr=cfg.window_title_substr,
-        templates_dir=cfg.templates_dir,
-        save_shots=cfg.save_shots,
-        shots_dir=cfg.shots_dir,
-    )
+    primary, ctx = builder(cfg)
+    # `checkstuck` is now defined through JSON like other machines, so reuse the
+    # local loader helper to avoid circular imports with bot.states.__init__.
+    checker, _ = _build_checkstuck_state(cfg)
+    try:
+        primary_key = getattr(primary, "_machine_key", None)
+        if isinstance(primary_key, str):
+            setattr(ctx, "machine_key", primary_key)
+            setattr(ctx, "active_machine_key", primary_key)
+    except Exception:
+        pass
+    try:
+        setattr(checker, "_machine_key", "checkstuck")
+    except Exception:
+        pass
     # Wrap primary with a dedicated checker instance
     wrapped = WithCheckStuckState(primary, checker, label=label)
+    try:
+        setattr(wrapped, "_machine_key", getattr(primary, "_machine_key", getattr(primary, "name", "")))
+    except Exception:
+        pass
     return wrapped, ctx

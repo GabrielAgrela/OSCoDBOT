@@ -1,0 +1,26 @@
+{
+  "key": "farm_wood",
+  "label": "Farm Wood",
+  "context": "default",
+  "metadata": {
+    "category": "Primary Farming",
+    "badge": "Loop",
+    "description": "Searches for wood nodes, manages legion dispatch, and respects cooldown gates when armies are full.",
+    "tags": [
+      "farm",
+      "wood",
+      "gather"
+    ]
+  },
+  "extends": {
+    "template": "farm_common",
+    "options": {
+      "key": "wood",
+      "resource_step_label": "LoggingCampAny",
+      "resource_templates": [
+        "LoggingCamp.png",
+        "LoggingCampEnabled.png"
+      ]
+    }
+  }
+}

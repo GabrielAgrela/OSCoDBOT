@@ -1,0 +1,26 @@
+{
+  "key": "farm_ore",
+  "label": "Farm Ore",
+  "context": "default",
+  "metadata": {
+    "category": "Primary Farming",
+    "badge": "Loop",
+    "description": "Targets ore deposits, downgrades search level when needed, and handles gather and march flows.",
+    "tags": [
+      "farm",
+      "ore",
+      "gather"
+    ]
+  },
+  "extends": {
+    "template": "farm_common",
+    "options": {
+      "key": "ore",
+      "resource_step_label": "OreAny",
+      "resource_templates": [
+        "OreMine.png",
+        "OreMineEnabled.png"
+      ]
+    }
+  }
+}

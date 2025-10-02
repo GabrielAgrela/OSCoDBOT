@@ -1,11 +1,13 @@
 let running = false;
 let paused = false;
 let lastLogId = 0;
+let metricsInflight = false;
 
 // Persist selected modes across visits
 const LS_SELECTED_KEY = 'modes.selected.v1';
 const LS_COUNTERS_KEY = 'counters.v1';
 const LS_SESSION_KEY = 'counters.session.v1';
+const LS_VIEW_MODE_KEY = 'dashboard.viewMode.v1';
 
 function saveSelectionLS(arr) {
   try {
@@ -79,12 +81,74 @@ function clearSessionBaseline() {
   try { localStorage.removeItem(LS_SESSION_KEY); } catch (e) { /* ignore */ }
 }
 
+function saveViewMode(mode) {
+  try {
+    const value = mode === 'screenshot' ? 'screenshot' : 'preview';
+    localStorage.setItem(LS_VIEW_MODE_KEY, value);
+  } catch (e) {
+    // ignore
+  }
+}
+
+function loadViewMode() {
+  try {
+    const stored = localStorage.getItem(LS_VIEW_MODE_KEY);
+    return stored === 'screenshot' ? 'screenshot' : 'preview';
+  } catch (e) {
+    return 'preview';
+  }
+}
+
+function applyViewMode(mode, notify = true) {
+  const targetMode = mode === 'screenshot' ? 'screenshot' : 'preview';
+  const shot = document.getElementById('shot-panel');
+  const viewerBody = document.getElementById('machine-viewer-body');
+  const toggle = document.getElementById('view-toggle');
+  const showPreview = targetMode !== 'screenshot';
+  if (shot) shot.classList.toggle('is-hidden', showPreview);
+  if (viewerBody) viewerBody.classList.toggle('is-hidden', !showPreview);
+  if (toggle) {
+    toggle.textContent = showPreview ? 'Show Screenshot' : 'Show Machine Preview';
+    toggle.setAttribute('aria-pressed', showPreview ? 'true' : 'false');
+  }
+  if (notify) {
+    try {
+      document.dispatchEvent(new CustomEvent('bot-view-mode', { detail: { mode: targetMode } }));
+    } catch (e) {
+      // ignore broadcast issues
+    }
+  }
+}
+
+function initViewToggle() {
+  const btn = document.getElementById('view-toggle');
+  if (!btn) return;
+  let currentMode = loadViewMode();
+  btn.addEventListener('click', () => {
+    currentMode = currentMode === 'screenshot' ? 'preview' : 'screenshot';
+    saveViewMode(currentMode);
+    applyViewMode(currentMode);
+  });
+  // Ensure persisted state is applied on load
+  applyViewMode(currentMode);
+}
+
+function broadcastSelection(selection) {
+  try {
+    const detail = { selection: Array.isArray(selection) ? selection.slice() : [] };
+    document.dispatchEvent(new CustomEvent('bot-selection', { detail }));
+  } catch (e) {
+    // ignore broadcast failures
+  }
+}
+
 function applySavedSelection() {
   const saved = new Set(loadSelectionLS());
   document.querySelectorAll('.mode-check').forEach(el => {
     el.checked = saved.has(el.value);
   });
   refreshModeCardStates();
+  broadcastSelection(getSelection());
 }
 
 function applySavedCounters() {
@@ -160,14 +224,21 @@ function updateControls() {
 
 function onSelectionChange() {
   // Save selections whenever user toggles a mode
-  saveSelectionLS(getSelection());
+  const selection = getSelection();
+  saveSelectionLS(selection);
   updateControls();
+  broadcastSelection(selection);
 }
 
 async function status() {
   try {
     const res = await fetch('/api/status');
     const data = await res.json();
+    try {
+      document.dispatchEvent(new CustomEvent('bot-status', { detail: data }));
+    } catch (err) {
+      // ignore broadcast issues
+    }
     const el = document.getElementById('status');
     const cdEl = document.getElementById('cooldown');
     const startBtn = document.getElementById('start');
@@ -285,6 +356,7 @@ async function start() {
     alert(running ? 'Failed to stop' : 'Failed to start');
   } finally {
     await status();
+    await metrics();
   }
 }
 
@@ -301,6 +373,7 @@ async function togglePause() {
     alert(paused ? 'Failed to resume' : 'Failed to pause');
   } finally {
     await status();
+    await metrics();
   }
 }
 
@@ -316,6 +389,7 @@ window.addEventListener('DOMContentLoaded', () => {
   const saveBtn = document.getElementById('save-settings');
   if (saveBtn) saveBtn.addEventListener('click', saveSettings);
   initModeInteractions();
+  initViewToggle();
   applySavedSelection();
   // Show saved counters immediately before first metrics fetch
   applySavedCounters();
@@ -324,7 +398,7 @@ window.addEventListener('DOMContentLoaded', () => {
   setInterval(status, 1500);
   // Periodically fetch metrics to show window dimensions
   metrics();
-  setInterval(metrics, 1500);
+  setInterval(metrics, 500);
   fetchLogs();
   setInterval(fetchLogs, 1000);
   // Refresh debug screenshot
@@ -335,10 +409,17 @@ window.addEventListener('DOMContentLoaded', () => {
 });
 
 async function metrics() {
+  if (metricsInflight) return;
+  metricsInflight = true;
   try {
     const res = await fetch('/api/metrics');
     if (!res.ok) return;
     const data = await res.json();
+    try {
+      document.dispatchEvent(new CustomEvent('bot-metrics', { detail: data }));
+    } catch (err) {
+      // ignore broadcast issues
+    }
     const el = document.getElementById('window-dims');
     const ctr = document.getElementById('counters');
     if (!el) return;
@@ -379,6 +460,8 @@ async function metrics() {
     }
   } catch (e) {
     // ignore
+  } finally {
+    metricsInflight = false;
   }
 }
 

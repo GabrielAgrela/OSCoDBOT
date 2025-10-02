@@ -1,0 +1,463 @@
+{
+  "type": "graph",
+  "start": "CooldownGate",
+  "loop_sleep_s": 0.05,
+  "steps": [
+    {
+      "name": "CooldownGate",
+      "actions": [
+        {
+          "type": "CooldownGate",
+          "name": "train_cooldown_gate",
+          "key": "train"
+        }
+      ],
+      "on_success": "CheckIfActionsMenuClosed",
+      "on_failure": "CooldownGate"
+    },
+    {
+      "name": "CheckIfActionsMenuClosed",
+      "actions": [
+        {
+          "type": "Wait",
+          "name": "wait_before_screenshot",
+          "seconds": 0.8,
+          "randomize": true
+        },
+        {
+          "type": "Screenshot",
+          "name": "train_cap_actions_menu_chk"
+        },
+        {
+          "type": "CheckTemplate",
+          "name": "ActionsMenuButtonCheck",
+          "templates": [
+            "ActionsMenuButton.png"
+          ],
+          "region_pct": {
+            "$config": "magifier_region_pct"
+          },
+          "threshold": {
+            "$config": "match_threshold"
+          },
+          "verify_threshold": {
+            "$config": "verify_threshold"
+          }
+        }
+      ],
+      "on_success": "OpenActionsMenuPanel",
+      "on_failure": "VerifySectionsCollapsedInitial"
+    },
+    {
+      "name": "OpenActionsMenuPanel",
+      "actions": [
+        {
+          "type": "Screenshot",
+          "name": "train_cap_actions_menu_open"
+        },
+        {
+          "type": "FindAndClick",
+          "name": "ActionsMenuButtonClick",
+          "templates": [
+            "ActionsMenuButton.png"
+          ],
+          "region_pct": {
+            "$config": "magifier_region_pct"
+          },
+          "threshold": {
+            "$config": "match_threshold"
+          },
+          "verify_threshold": {
+            "$config": "verify_threshold"
+          }
+        },
+        {
+          "type": "Wait",
+          "name": "wait_after_open_menu",
+          "seconds": 0.6,
+          "randomize": true
+        }
+      ],
+      "on_success": "VerifySectionsCollapsedInitial",
+      "on_failure": "VerifySectionsCollapsedInitial"
+    },
+    {
+      "name": "VerifySectionsCollapsedInitial",
+      "actions": [
+        {
+          "type": "Screenshot",
+          "name": "train_cap_minimized_chk_1"
+        },
+        {
+          "type": "CheckTemplate",
+          "name": "SectionsMinimizedCheck1",
+          "templates": [
+            "ActionSectionsMinimizedIndicator.png"
+          ],
+          "region_pct": {
+            "$config": "action_menu_first_half_region_pct"
+          },
+          "threshold": {
+            "$config": "match_threshold"
+          },
+          "verify_threshold": {
+            "$config": "verify_threshold"
+          }
+        }
+      ],
+      "on_success": "AcknowledgeTrainingCompletion",
+      "on_failure": "CollapseSectionsFirstPass"
+    },
+    {
+      "name": "CollapseSectionsFirstPass",
+      "actions": [
+        {
+          "type": "Screenshot",
+          "name": "train_cap_minimize_1"
+        },
+        {
+          "type": "FindAndClick",
+          "name": "ActionMinimize1",
+          "templates": [
+            "ActionMinimizeArrow.png"
+          ],
+          "region_pct": {
+            "$config": "action_menu_first_half_region_pct"
+          },
+          "threshold": {
+            "$config": "match_threshold"
+          },
+          "verify_threshold": {
+            "$config": "verify_threshold"
+          }
+        },
+        {
+          "type": "Wait",
+          "name": "wait_after_minimize_1",
+          "seconds": 0.4,
+          "randomize": true
+        }
+      ],
+      "on_success": "VerifySectionsCollapsedAfterFirst",
+      "on_failure": "VerifySectionsCollapsedAfterFirst"
+    },
+    {
+      "name": "VerifySectionsCollapsedAfterFirst",
+      "actions": [
+        {
+          "type": "Screenshot",
+          "name": "train_cap_minimized_chk_2"
+        },
+        {
+          "type": "CheckTemplate",
+          "name": "SectionsMinimizedCheck2",
+          "templates": [
+            "ActionSectionsMinimizedIndicator.png"
+          ],
+          "region_pct": {
+            "$config": "action_menu_first_half_region_pct"
+          },
+          "threshold": {
+            "$config": "match_threshold"
+          },
+          "verify_threshold": {
+            "$config": "verify_threshold"
+          }
+        }
+      ],
+      "on_success": "AcknowledgeTrainingCompletion",
+      "on_failure": "CollapseSectionsSecondPass"
+    },
+    {
+      "name": "CollapseSectionsSecondPass",
+      "actions": [
+        {
+          "type": "Screenshot",
+          "name": "train_cap_minimize_2"
+        },
+        {
+          "type": "FindAndClick",
+          "name": "ActionMinimize2",
+          "templates": [
+            "ActionMinimizeArrow.png"
+          ],
+          "region_pct": {
+            "$config": "action_menu_first_half_region_pct"
+          },
+          "threshold": {
+            "$config": "match_threshold"
+          },
+          "verify_threshold": {
+            "$config": "verify_threshold"
+          }
+        },
+        {
+          "type": "Wait",
+          "name": "wait_after_minimize_2",
+          "seconds": 0.4,
+          "randomize": true
+        }
+      ],
+      "on_success": "AcknowledgeTrainingCompletion",
+      "on_failure": "AcknowledgeTrainingCompletion"
+    },
+    {
+      "name": "AcknowledgeTrainingCompletion",
+      "actions": [
+        {
+          "type": "Screenshot",
+          "name": "train_cap_done_notif"
+        },
+        {
+          "type": "FindAndClick",
+          "name": "ActionDone",
+          "templates": [
+            "ActionDoneNotification.png",
+            "ActionProgressComplete.png"
+          ],
+          "region_pct": {
+            "$config": "action_menu_training_region_pct"
+          },
+          "threshold": {
+            "$config": "match_threshold"
+          },
+          "verify_threshold": 0.95
+        },
+        {
+          "type": "Wait",
+          "name": "wait_after_done",
+          "seconds": 2,
+          "randomize": true
+        }
+      ],
+      "on_success": "SelectTrainingType",
+      "on_failure": "ScheduleTrainingCooldown"
+    },
+    {
+      "name": "SelectTrainingType",
+      "actions": [
+        {
+          "type": "Screenshot",
+          "name": "train_cap_type_btn"
+        },
+        {
+          "type": "FindAndClick",
+          "name": "TrainTypeButton",
+          "templates": [
+            "TrainCavalaryButton.png",
+            "TrainMageButton.png",
+            "TrainBalistaButton.png",
+            "TrainInfantaryButton.png",
+            "TrainCelestialButton.png",
+            "TrainInfantryButton.png"
+          ],
+          "region_pct": [
+            0.0,
+            0.0,
+            1.0,
+            1.0
+          ],
+          "threshold": {
+            "$config": "match_threshold"
+          },
+          "verify_threshold": {
+            "$config": "verify_threshold"
+          }
+        },
+        {
+          "type": "Wait",
+          "name": "wait_after_type_btn",
+          "seconds": 0.6,
+          "randomize": true
+        }
+      ],
+      "on_success": "AttemptUpgradeFlow",
+      "on_failure": "AttemptUpgradeFlow"
+    },
+    {
+      "name": "AttemptUpgradeFlow",
+      "actions": [
+        {
+          "type": "Screenshot",
+          "name": "train_cap_upgrade_icon"
+        },
+        {
+          "type": "FindAndClick",
+          "name": "UpgradeIconClick",
+          "templates": [
+            "UpgradeIcon.png"
+          ],
+          "region_pct": {
+            "$config": "train_troop_selection_region_pct"
+          },
+          "threshold": {
+            "$config": "match_threshold"
+          },
+          "verify_threshold": {
+            "$config": "verify_threshold"
+          }
+        },
+        {
+          "type": "Wait",
+          "name": "wait_after_upgrade_icon",
+          "seconds": 0.6,
+          "randomize": true
+        }
+      ],
+      "on_success": "PressUpgradeButton",
+      "on_failure": "StartTrainingRun"
+    },
+    {
+      "name": "PressUpgradeButton",
+      "actions": [
+        {
+          "type": "Screenshot",
+          "name": "train_cap_upgrade_button"
+        },
+        {
+          "type": "FindAndClick",
+          "name": "UpgradeButtonClick",
+          "templates": [
+            "UpgradeButton.png"
+          ],
+          "region_pct": [
+            0.0,
+            0.0,
+            1.0,
+            1.0
+          ],
+          "threshold": {
+            "$config": "match_threshold"
+          },
+          "verify_threshold": {
+            "$config": "verify_threshold"
+          }
+        },
+        {
+          "type": "Wait",
+          "name": "wait_after_upgrade_button",
+          "seconds": 0.6,
+          "randomize": true
+        }
+      ],
+      "on_success": "PressPromoteButton",
+      "on_failure": "StartTrainingRun"
+    },
+    {
+      "name": "PressPromoteButton",
+      "actions": [
+        {
+          "type": "Screenshot",
+          "name": "train_cap_promote_button"
+        },
+        {
+          "type": "FindAndClick",
+          "name": "PromoteButtonClick",
+          "templates": [
+            "PromoteButton.png"
+          ],
+          "region_pct": [
+            0.0,
+            0.0,
+            1.0,
+            1.0
+          ],
+          "threshold": {
+            "$config": "match_threshold"
+          },
+          "verify_threshold": {
+            "$config": "verify_threshold"
+          }
+        },
+        {
+          "type": "Wait",
+          "name": "wait_after_promote",
+          "seconds": 0.6,
+          "randomize": true
+        }
+      ],
+      "on_success": "CompleteTrainingCycle",
+      "on_failure": "CompleteTrainingCycle"
+    },
+    {
+      "name": "StartTrainingRun",
+      "actions": [
+        {
+          "type": "Screenshot",
+          "name": "train_cap_train_btn"
+        },
+        {
+          "type": "FindAndClick",
+          "name": "TrainButton",
+          "templates": [
+            "TrainButton.png"
+          ],
+          "region_pct": [
+            0.0,
+            0.0,
+            1.0,
+            1.0
+          ],
+          "threshold": {
+            "$config": "match_threshold"
+          },
+          "verify_threshold": {
+            "$config": "verify_threshold"
+          }
+        },
+        {
+          "type": "Wait",
+          "name": "wait_after_train",
+          "seconds": 0.6,
+          "randomize": true
+        }
+      ],
+      "on_success": "CheckIfActionsMenuClosed",
+      "on_failure": "CompleteTrainingCycle"
+    },
+    {
+      "name": "ScheduleTrainingCooldown",
+      "actions": [
+        {
+          "type": "SetCooldownRandom",
+          "name": "train_set_cooldown",
+          "key": "train",
+          "min_seconds": {
+            "$config": "train_cooldown_min_s",
+            "default": 3600
+          },
+          "max_seconds": {
+            "$config": "train_cooldown_max_s",
+            "default": 7200
+          }
+        }
+      ],
+      "on_success": "CompleteTrainingCycle",
+      "on_failure": "CompleteTrainingCycle"
+    },
+    {
+      "name": "CompleteTrainingCycle",
+      "actions": [
+        {
+          "type": "EndCycle",
+          "name": "end_cycle"
+        }
+      ],
+      "on_success": "CooldownGate",
+      "on_failure": "CooldownGate"
+    }
+  ],
+  "key": "train",
+  "label": "Train",
+  "metadata": {
+    "category": "Support & Utilities",
+    "badge": "Support",
+    "description": "Keeps troop training queues full by cycling the action menu and respecting configurable cooldowns.",
+    "tags": [
+      "train",
+      "troops",
+      "barracks"
+    ]
+  },
+  "context": "default"
+}
